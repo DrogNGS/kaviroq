@@ -120,9 +120,12 @@ export default function SetupBusinessScreen() {
   };
 
   const handleSubmit = async () => {
+    console.log("coords:", coords);
+console.log("name:", name);
+console.log("category:", category);
     if (!name.trim()) { Alert.alert("Erreur", "Le nom est requis."); return; }
     if (!category) { Alert.alert("Erreur", "Choisissez une catégorie."); return; }
-    if (!coords) { Alert.alert("Erreur", "Positionnez votre entreprise sur la carte."); return; }
+    const finalCoords = coords || { lat: 5.345317, lng: -4.024429 };
 
     setLoading(true);
     try {
@@ -138,11 +141,11 @@ export default function SetupBusinessScreen() {
           phone,
           location: {
             type: "Point",
-            coordinates: [coords.lng, coords.lat],
+            coordinates: [finalCoords.lng, finalCoords.lat],
           },
         }),
       });
-
+      
       if (!res.ok) throw new Error();
       Alert.alert("🎉 Entreprise créée !", "Votre entreprise est maintenant visible sur la carte.", [
         { text: "Continuer", onPress: () => router.replace("/dashboard") }
