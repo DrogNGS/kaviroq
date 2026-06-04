@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform
@@ -26,18 +26,20 @@ export default function RegisterScreen() {
       setMessage({ text: "Les mots de passe ne correspondent pas", type: "error" }); return;
     }
     if (password.length < 6) {
-      setMessage({ text: "Mot de passe trop court (6 caractÃ¨res min)", type: "error" }); return;
+      setMessage({ text: "Mot de passe trop court (6 caractères min)", type: "error" }); return;
     }
     setLoading(true);
     setMessage(null);
     try {
-      await register({
-        name,
-        email,
-        password,
-        role: role === "business" ? "business" : "client",
-      });
-      setMessage({ text: "Compte crÃ©Ã© avec succÃ¨s !", type: "success" });
+      const roleToSend = role === "business" ? "business" : "client";
+console.log("Rôle envoyé:", roleToSend);
+await register({
+  name,
+  email,
+  password,
+  role: roleToSend,
+});
+      setMessage({ text: "Compte créé avec succès !", type: "success" });
       setTimeout(() => {
   if (role === "business") {
     router.replace("/dashboard");
@@ -61,17 +63,17 @@ export default function RegisterScreen() {
 
         <View style={styles.logoBox}>
           <View style={styles.logoIcon}>
-            <Text style={styles.logoEmoji}>ðŸš€</Text>
+            <Text style={styles.logoEmoji}>🚀</Text>
           </View>
           <Text style={styles.logo}>KAVIROQ</Text>
-          <Text style={styles.tagline}>CrÃ©ez votre compte gratuitement</Text>
+          <Text style={styles.tagline}>Créez votre compte gratuitement</Text>
         </View>
 
         <View style={styles.form}>
           {message && (
             <View style={[styles.msgBox, message.type === "error" ? styles.msgError : styles.msgSuccess]}>
               <Text style={[styles.msgText, message.type === "error" ? styles.msgTextError : styles.msgTextSuccess]}>
-                {message.type === "error" ? "âš ï¸ " : "âœ… "}{message.text}
+                {message.type === "error" ? "⚠️ " : "✅ "}{message.text}
               </Text>
             </View>
           )}
@@ -79,7 +81,7 @@ export default function RegisterScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Nom complet</Text>
             <View style={styles.inputBox}>
-              <Text style={styles.inputIcon}>ðŸ‘¤</Text>
+              <Text style={styles.inputIcon}>👤</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Jean Kouassi"
@@ -94,7 +96,7 @@ export default function RegisterScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <View style={styles.inputBox}>
-              <Text style={styles.inputIcon}>ðŸ“§</Text>
+              <Text style={styles.inputIcon}>📧</Text>
               <TextInput
                 style={styles.input}
                 placeholder="votre@email.com"
@@ -110,10 +112,10 @@ export default function RegisterScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Mot de passe</Text>
             <View style={styles.inputBox}>
-              <Text style={styles.inputIcon}>ðŸ”’</Text>
+              <Text style={styles.inputIcon}>🔒</Text>
               <TextInput
                 style={styles.input}
-                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                placeholder="••••••••"
                 placeholderTextColor={theme.textLight}
                 value={password}
                 onChangeText={setPassword}
@@ -125,10 +127,10 @@ export default function RegisterScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Confirmer le mot de passe</Text>
             <View style={[styles.inputBox, confirm && password !== confirm && styles.inputError]}>
-              <Text style={styles.inputIcon}>ðŸ”’</Text>
+              <Text style={styles.inputIcon}>🔒</Text>
               <TextInput
                 style={styles.input}
-                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                placeholder="••••••••"
                 placeholderTextColor={theme.textLight}
                 value={confirm}
                 onChangeText={setConfirm}
@@ -144,7 +146,7 @@ export default function RegisterScreen() {
                 style={[styles.roleBtn, role === "client" && styles.roleBtnActive]}
                 onPress={() => setRole("client")}
               >
-                <Text style={styles.roleEmoji}>ðŸ™‹</Text>
+                <Text style={styles.roleEmoji}>🙋</Text>
                 <Text style={[styles.roleText, role === "client" && styles.roleTextActive]}>Client</Text>
                 <Text style={styles.roleDesc}>Je commande</Text>
               </TouchableOpacity>
@@ -152,7 +154,7 @@ export default function RegisterScreen() {
                 style={[styles.roleBtn, role === "business" && styles.roleBtnActive]}
                 onPress={() => setRole("business")}
               >
-                <Text style={styles.roleEmoji}>ðŸª</Text>
+                <Text style={styles.roleEmoji}>🏪</Text>
                 <Text style={[styles.roleText, role === "business" && styles.roleTextActive]}>Entreprise</Text>
                 <Text style={styles.roleDesc}>Je vends</Text>
               </TouchableOpacity>
@@ -166,13 +168,13 @@ export default function RegisterScreen() {
           >
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.btnText}>CrÃ©er mon compte â†’</Text>
+              : <Text style={styles.btnText}>Créer mon compte →</Text>
             }
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.linkBox} onPress={() => router.push("/login")}>
             <Text style={styles.linkText}>
-              DÃ©jÃ  un compte ? <Text style={styles.link}>Se connecter</Text>
+              Déjà un compte ? <Text style={styles.link}>Se connecter</Text>
             </Text>
           </TouchableOpacity>
         </View>

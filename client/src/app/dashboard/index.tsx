@@ -59,21 +59,34 @@ export default function BusinessDashboard() {
   }, [alertAnim]);
 
   const fetchOrders = useCallback(async () => {
-    try {
-      const token = await AsyncStorage.getItem("kaviroq_token");
-      const res = await fetch(`${API_URL}/orders/business`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 401) { router.replace("/login"); return; }
-      const data = await res.json();
-      setOrders(data);
-    } catch {
-      Alert.alert("Erreur", "Impossible de charger les commandes.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+  try {
+    const token = await AsyncStorage.getItem("kaviroq_token");
+    
+    // Vérifier si l'entreprise existe
+    const bizRes = await fetch(`${API_URL}/businesses/mine`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const bizData = await bizRes.json();
+    
+    // Si pas d'entreprise → rediriger vers setup
+    if (!Array.isArray(bizData) || bizData.length === 0) {
+      router.replace("/dashboard/setup");
+      return;
     }
-  }, []);
+
+    const res = await fetch(`${API_URL}/orders/business`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.status === 401) { router.replace("/login"); return; }
+    const data = await res.json();
+    setOrders(data);
+  } catch {
+    Alert.alert("Erreur", "Impossible de charger les commandes.");
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+}, []);
 
   useEffect(() => {
     fetchOrders();
