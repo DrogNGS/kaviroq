@@ -1,10 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL = __DEV__
-  ? (typeof window !== 'undefined' && window.location?.hostname === 'localhost'
-      ? 'http://localhost:5000/api'        // web
-      : 'http://192.168.1.254:5000/api')    // téléphone
-  : 'https://api.kaviroq.com/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api";
 
 const getToken = async () => {
   try {
@@ -55,3 +51,4 @@ export const apiClient = {
 };
 
 export { BASE_URL };
+

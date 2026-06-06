@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, ScrollView, Platform,
@@ -10,14 +10,14 @@ import * as Location from "expo-location";
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api";
 
 const CATEGORIES = [
-  { value: "restaurant", label: "Restaurant", icon: "🍔" },
-  { value: "hotel",      label: "Hôtel",       icon: "🏨" },
-  { value: "patisserie", label: "Pâtisserie",  icon: "🎂" },
-  { value: "maquis",    label: "Maquis",      icon: "🍖" },
-  { value: "salon",     label: "Salon",       icon: "💇" },
-  { value: "fast_food", label: "Fast Food",   icon: "🍟" },
-  { value: "cafe",      label: "Café",        icon: "☕" },
-  { value: "commerce",  label: "Commerce",    icon: "🛒" },
+  { value: "restaurant", label: "Restaurant", icon: "ðŸ”" },
+  { value: "hotel",      label: "HÃ´tel",       icon: "ðŸ¨" },
+  { value: "patisserie", label: "PÃ¢tisserie",  icon: "ðŸŽ‚" },
+  { value: "maquis",    label: "Maquis",      icon: "ðŸ–" },
+  { value: "salon",     label: "Salon",       icon: "ðŸ’‡" },
+  { value: "fast_food", label: "Fast Food",   icon: "ðŸŸ" },
+  { value: "cafe",      label: "CafÃ©",        icon: "â˜•" },
+  { value: "commerce",  label: "Commerce",    icon: "ðŸ›’" },
 ];
 
 export default function SetupBusinessScreen() {
@@ -33,28 +33,34 @@ export default function SetupBusinessScreen() {
   const [phone, setPhone] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
+  // FIX 1 : DÃ©tecter la position automatiquement Ã  l'Ã©tape 2
+  useEffect(() => {
+    if (step === 2 && !coords) {
+      getMyLocation();
+    }
+  }, [step]);
+
   const getMyLocation = async () => {
     setLocating(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission refusée", "Activez la géolocalisation pour vous positionner sur la carte.");
+        Alert.alert("Permission refusÃ©e", "Activez la gÃ©olocalisation pour vous positionner sur la carte.");
         setLocating(false);
         return;
       }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
 
-      // Reverse geocoding pour l'adresse
       const geo = await Location.reverseGeocodeAsync({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
       if (geo.length > 0) {
         const g = geo[0];
         const addr = [g.street, g.district, g.city].filter(Boolean).join(", ");
         if (!address) setAddress(addr);
       }
-      Alert.alert("✅ Position détectée", "Votre position a été enregistrée !");
+      Alert.alert("âœ… Position dÃ©tectÃ©e", "Votre position a Ã©tÃ© enregistrÃ©e !");
     } catch {
-      Alert.alert("Erreur", "Impossible de détecter votre position.");
+      Alert.alert("Erreur", "Impossible de dÃ©tecter votre position.");
     } finally {
       setLocating(false);
     }
@@ -120,16 +126,23 @@ export default function SetupBusinessScreen() {
   };
 
   const handleSubmit = async () => {
-    console.log("coords:", coords);
-console.log("name:", name);
-console.log("category:", category);
     if (!name.trim()) { Alert.alert("Erreur", "Le nom est requis."); return; }
-    if (!category) { Alert.alert("Erreur", "Choisissez une catégorie."); return; }
+    if (!category) { Alert.alert("Erreur", "Choisissez une catÃ©gorie."); return; }
+
+    // FIX 2 : Fallback coords si pas de position sÃ©lectionnÃ©e
     const finalCoords = coords || { lat: 5.345317, lng: -4.024429 };
 
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem("kaviroq_token");
+
+      // FIX 3 : VÃ©rifier que le token existe
+      if (!token) {
+        Alert.alert("Session expirÃ©e", "Veuillez vous reconnecter.");
+        router.replace("/login");
+        return;
+      }
+
       const res = await fetch(`${API_URL}/businesses`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -145,25 +158,32 @@ console.log("category:", category);
           },
         }),
       });
-      
-      if (!res.ok) throw new Error();
-      Alert.alert("🎉 Entreprise créée !", "Votre entreprise est maintenant visible sur la carte.", [
-        { text: "Continuer", onPress: () => router.replace("/dashboard") }
-      ]);
-    } catch {
-      Alert.alert("Erreur", "Impossible de créer l'entreprise.");
+
+      // FIX 4 : Afficher le message d'erreur du serveur si disponible
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        const errorMsg = errorData?.message || "Impossible de crÃ©er l'entreprise.";
+        Alert.alert("Erreur", errorMsg);
+        return;
+      }
+
+      router.replace("/dashboard");
+    } catch (err) {
+      // FIX 5 : Afficher l'erreur rÃ©elle dans la console pour debug
+      console.error("Erreur handleSubmit:", err);
+      Alert.alert("Erreur", "Impossible de crÃ©er l'entreprise. VÃ©rifiez votre connexion.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Étape 1 — Infos de base
+  // Ã‰tape 1 â€” Infos de base
   if (step === 1) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Créer mon entreprise</Text>
-          <Text style={styles.subtitle}>Étape 1/2 — Informations</Text>
+          <Text style={styles.title}>CrÃ©er mon entreprise</Text>
+          <Text style={styles.subtitle}>Ã‰tape 1/2 â€” Informations</Text>
         </View>
 
         <Text style={styles.label}>Nom de l'entreprise *</Text>
@@ -175,7 +195,7 @@ console.log("category:", category);
           onChangeText={setName}
         />
 
-        <Text style={styles.label}>Catégorie *</Text>
+        <Text style={styles.label}>CatÃ©gorie *</Text>
         <View style={styles.categoriesGrid}>
           {CATEGORIES.map((cat) => (
             <TouchableOpacity
@@ -192,7 +212,7 @@ console.log("category:", category);
         <Text style={styles.label}>Description</Text>
         <TextInput
           style={[styles.input, styles.inputMulti]}
-          placeholder="Décrivez votre entreprise..."
+          placeholder="DÃ©crivez votre entreprise..."
           placeholderTextColor="#aaa"
           value={description}
           onChangeText={setDescription}
@@ -208,7 +228,7 @@ console.log("category:", category);
           onChangeText={setAddress}
         />
 
-        <Text style={styles.label}>Téléphone</Text>
+        <Text style={styles.label}>TÃ©lÃ©phone</Text>
         <TextInput
           style={styles.input}
           placeholder="Ex: +225 07 00 00 00"
@@ -223,33 +243,33 @@ console.log("category:", category);
           onPress={() => setStep(2)}
           disabled={!name || !category}
         >
-          <Text style={styles.btnText}>Suivant → Positionner sur la carte</Text>
+          <Text style={styles.btnText}>Suivant â†’ Positionner sur la carte</Text>
         </TouchableOpacity>
       </ScrollView>
     );
   }
 
-  // Étape 2 — Position sur la carte
+  // Ã‰tape 2 â€” Position sur la carte
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => setStep(1)}>
-          <Text style={styles.backBtn}>← Retour</Text>
+          <Text style={styles.backBtn}>â† Retour</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Ma position</Text>
-        <Text style={styles.subtitle}>Étape 2/2 — Positionnez-vous sur la carte</Text>
+        <Text style={styles.subtitle}>Ã‰tape 2/2 â€” Positionnez-vous sur la carte</Text>
       </View>
 
       <View style={styles.mapActions}>
         <TouchableOpacity style={styles.locateBtn} onPress={getMyLocation} disabled={locating}>
           {locating
             ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.locateBtnText}>📍 Détecter ma position</Text>
+            : <Text style={styles.locateBtnText}>ðŸ“ DÃ©tecter ma position</Text>
           }
         </TouchableOpacity>
         {coords && (
           <Text style={styles.coordsText}>
-            ✅ {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
+            âœ… {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
           </Text>
         )}
       </View>
@@ -260,14 +280,15 @@ console.log("category:", category);
 
       <Text style={styles.mapHint}>Appuyez sur la carte ou glissez le marqueur pour ajuster votre position</Text>
 
+      {/* FIX 1 : Bouton toujours actif (coords pas requis grÃ¢ce au fallback) */}
       <TouchableOpacity
-        style={[styles.btn, styles.btnCreate, (!coords || loading) ? styles.btnDisabled : {}]}
+        style={[styles.btn, styles.btnCreate, loading ? styles.btnDisabled : {}]}
         onPress={handleSubmit}
-        disabled={!coords || loading}
+        disabled={loading}
       >
         {loading
           ? <ActivityIndicator color="#fff" />
-          : <Text style={styles.btnText}>🚀 Créer mon entreprise</Text>
+          : <Text style={styles.btnText}>ðŸš€ CrÃ©er mon entreprise</Text>
         }
       </TouchableOpacity>
     </View>
@@ -301,3 +322,7 @@ const styles = StyleSheet.create({
   mapContainer:   { flex: 1, marginHorizontal: 20, borderRadius: 16, overflow: "hidden" },
   mapHint:        { fontSize: 12, color: "#aaa", textAlign: "center", marginVertical: 8, paddingHorizontal: 20 },
 });
+
+
+
+
