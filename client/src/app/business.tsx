@@ -12,6 +12,7 @@ interface MenuItem {
   price: number;
   description: string;
   available: boolean;
+  category?: string;
 }
 
 interface Business {
@@ -20,6 +21,7 @@ interface Business {
   category: string;
   description?: string;
   address?: string;
+  phone?: string;
   isOpen: boolean;
   menu: MenuItem[];
 }
@@ -31,6 +33,7 @@ interface CartItem extends MenuItem {
 const CATEGORY_ICONS: Record<string, string> = {
   restaurant: "🍔", patisserie: "🎂", hotel: "🏨",
   maquis: "🍖", fast_food: "🍟", cafe: "☕",
+  salon: "💇", commerce: "🛒",
 };
 
 export default function BusinessScreen() {
@@ -42,9 +45,9 @@ export default function BusinessScreen() {
   }>();
 
   const [business, setBusiness] = useState<Business | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
-  const [cart, setCart]         = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
 
   useEffect(() => {
     const fetchBusiness = async () => {
@@ -53,7 +56,7 @@ export default function BusinessScreen() {
         const data = await apiClient.get<Business>(`/businesses/${businessId}`, false);
         setBusiness(data);
       } catch {
-        setError("Impossible de charger le restaurant");
+        setError("Impossible de charger l'entreprise");
       } finally {
         setLoading(false);
       }
@@ -78,18 +81,18 @@ export default function BusinessScreen() {
     });
   };
 
-  const getQuantity   = (id: string) => cart.find(c => c._id === id)?.quantity ?? 0;
-  const getTotal      = () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const getQuantity = (id: string) => cart.find(c => c._id === id)?.quantity ?? 0;
+  const getTotal = () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const getTotalItems = () => cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleOrder = () => {
     router.push({
       pathname: "/order",
       params: {
-        businessId:   business?._id ?? businessId ?? "",
+        businessId: business?._id ?? businessId ?? "",
         businessName: business?.name ?? businessName ?? "",
-        cart:         JSON.stringify(cart),
-        total:        getTotal().toString(),
+        cart: JSON.stringify(cart),
+        total: getTotal().toString(),
       }
     });
   };
@@ -99,7 +102,7 @@ export default function BusinessScreen() {
       pathname: "/chat",
       params: {
         businessName: business?.name ?? businessName ?? "",
-        roomId:       `business_${business?._id ?? businessId ?? "unknown"}`
+        roomId: `business_${business?._id ?? businessId ?? "unknown"}`
       }
     });
   };
@@ -108,7 +111,7 @@ export default function BusinessScreen() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#FF6B35" />
-        <Text style={styles.loadingText}>Chargement du menu...</Text>
+        <Text style={styles.loadingText}>Chargement...</Text>
       </View>
     );
   }
@@ -124,13 +127,13 @@ export default function BusinessScreen() {
     );
   }
 
-  const name     = business?.name     ?? businessName ?? "Restaurant";
-  const cat      = business?.category ?? category     ?? "";
-  const menuList = business?.menu     ?? [];
+  const name = business?.name ?? businessName ?? "Entreprise";
+  const cat = business?.category ?? category ?? "";
+  const menuList = business?.menu ?? [];
+  const availableMenu = menuList.filter(item => item.available);
 
   return (
     <View style={styles.container}>
-
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -145,7 +148,7 @@ export default function BusinessScreen() {
 
       {/* Infos */}
       <View style={styles.infoRow}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <View style={styles.infoTop}>
           <View style={[styles.badge, { backgroundColor: business?.isOpen ? "#E6F9F0" : "#FCF0F0" }]}>
             <Text style={{ color: business?.isOpen ? "#1D9E75" : "#E24B4A", fontWeight: "600", fontSize: 13 }}>
               {business?.isOpen ? "✅ Ouvert" : "❌ Fermé"}
@@ -155,61 +158,61 @@ export default function BusinessScreen() {
             <Text style={styles.chatBtnText}>💬 Chat</Text>
           </TouchableOpacity>
         </View>
-        {business?.address && (
-          <Text style={styles.address}>📍 {business.address}</Text>
-        )}
-        {business?.description && (
-          <Text style={styles.description} numberOfLines={2}>{business.description}</Text>
-        )}
+        {business?.address && <Text style={styles.address}>📍 {business.address}</Text>}
+        {business?.phone && <Text style={styles.address}>📞 {business.phone}</Text>}
+        {business?.description && <Text style={styles.description} numberOfLines={2}>{business.description}</Text>}
       </View>
 
-      {/* Menu */}
+      {/* Catalogue */}
       <Text style={styles.menuTitle}>
-        Menu {menuList.length === 0 ? "— aucun plat disponible" : `(${menuList.length} plats)`}
+        Catalogue {availableMenu.length === 0 ? "— aucun produit disponible" : `(${availableMenu.length} produits)`}
       </Text>
 
       <ScrollView style={styles.menuList} contentContainerStyle={{ paddingBottom: 100 }}>
-        {menuList.length === 0 ? (
+        {availableMenu.length === 0 ? (
           <View style={styles.emptyMenu}>
-            <Text style={styles.emptyText}>Ce restaurant n'a pas encore de menu en ligne</Text>
+            <Text style={styles.emptyEmoji}>📦</Text>
+            <Text style={styles.emptyText}>Aucun produit disponible</Text>
           </View>
         ) : (
-          menuList
-            .filter(item => item.available)
-            .map((item) => {
-              const qty = getQuantity(item._id);
-              return (
-                <View key={item._id} style={styles.menuItem}>
-                  <View style={styles.menuInfo}>
-                    <Text style={styles.menuName}>{item.name}</Text>
-                    {item.description && (
-                      <Text style={styles.menuDescription}>{item.description}</Text>
-                    )}
-                    <Text style={styles.menuPrice}>{item.price.toLocaleString()} FCFA</Text>
-                  </View>
-                  <View style={styles.qtyControls}>
-                    {qty > 0 && (
-                      <>
-                        <TouchableOpacity style={styles.qtyBtn} onPress={() => removeFromCart(item)}>
-                          <Text style={styles.qtyBtnText}>−</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.qtyText}>{qty}</Text>
-                      </>
-                    )}
-                    <TouchableOpacity
-                      style={[styles.qtyBtn, styles.qtyBtnAdd]}
-                      onPress={() => addToCart(item)}
-                    >
-                      <Text style={[styles.qtyBtnText, { color: "#fff" }]}>+</Text>
-                    </TouchableOpacity>
-                  </View>
+          availableMenu.map((item) => {
+            const qty = getQuantity(item._id);
+            return (
+              <View key={item._id} style={styles.menuItem}>
+                <View style={styles.menuInfo}>
+                  {item.category && (
+                    <View style={styles.catPill}>
+                      <Text style={styles.catPillText}>{item.category}</Text>
+                    </View>
+                  )}
+                  <Text style={styles.menuName}>{item.name}</Text>
+                  {item.description && <Text style={styles.menuDescription}>{item.description}</Text>}
+                  <Text style={styles.menuPrice}>{item.price.toLocaleString()} FCFA</Text>
                 </View>
-              );
-            })
+                <View style={styles.qtyControls}>
+                  {qty > 0 && (
+                    <>
+                      <TouchableOpacity style={styles.qtyBtn} onPress={() => removeFromCart(item)}>
+                        <Text style={styles.qtyBtnText}>−</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.qtyText}>{qty}</Text>
+                    </>
+                  )}
+                  <TouchableOpacity
+                    style={[styles.qtyBtn, styles.qtyBtnAdd]}
+                    onPress={() => addToCart(item)}
+                    disabled={!business?.isOpen}
+                  >
+                    <Text style={[styles.qtyBtnText, { color: "#fff" }]}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })
         )}
       </ScrollView>
 
-      {/* Boutons bas */}
+      {/* Bouton commander */}
       <View style={styles.bottomButtons}>
         {cart.length > 0 && (
           <TouchableOpacity style={styles.cartButton} onPress={handleOrder}>
@@ -219,7 +222,6 @@ export default function BusinessScreen() {
           </TouchableOpacity>
         )}
       </View>
-
     </View>
   );
 }
@@ -238,18 +240,22 @@ const styles = StyleSheet.create({
   businessCategory: { fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: 2 },
   headerEmoji:      { fontSize: 32 },
   infoRow:          { backgroundColor: "#fff", padding: 15, gap: 8, borderBottomWidth: 1, borderBottomColor: "#eee" },
+  infoTop:          { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   badge:            { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  chatBtn:          { backgroundColor: "#333", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  chatBtn:          { backgroundColor: "#111", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, flexDirection: "row", alignItems: "center", gap: 6 },
   chatBtnText:      { color: "#fff", fontWeight: "600", fontSize: 13 },
   address:          { fontSize: 13, color: "#666" },
   description:      { fontSize: 13, color: "#999", lineHeight: 18 },
-  menuTitle:        { fontSize: 18, fontWeight: "bold", color: "#333", margin: 15, marginBottom: 5 },
+  menuTitle:        { fontSize: 16, fontWeight: "bold", color: "#333", margin: 15, marginBottom: 5 },
   menuList:         { flex: 1 },
-  emptyMenu:        { alignItems: "center", padding: 40 },
+  emptyMenu:        { alignItems: "center", padding: 40, gap: 12 },
+  emptyEmoji:       { fontSize: 40 },
   emptyText:        { color: "#999", textAlign: "center" },
-  menuItem:         { backgroundColor: "#fff", margin: 8, marginHorizontal: 15, padding: 15, borderRadius: 10, flexDirection: "row", alignItems: "center", gap: 10, elevation: 2 },
+  menuItem:         { backgroundColor: "#fff", margin: 8, marginHorizontal: 15, padding: 15, borderRadius: 12, flexDirection: "row", alignItems: "center", gap: 10, elevation: 2 },
   menuInfo:         { flex: 1 },
-  menuName:         { fontSize: 16, fontWeight: "bold", color: "#333" },
+  catPill:          { backgroundColor: "#F59E0B22", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, alignSelf: "flex-start", marginBottom: 4 },
+  catPillText:      { fontSize: 10, fontWeight: "700", color: "#F59E0B" },
+  menuName:         { fontSize: 15, fontWeight: "bold", color: "#333" },
   menuDescription:  { fontSize: 12, color: "#999", marginTop: 3 },
   menuPrice:        { fontSize: 14, color: "#FF6B35", fontWeight: "bold", marginTop: 5 },
   qtyControls:      { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -258,6 +264,6 @@ const styles = StyleSheet.create({
   qtyBtnText:       { fontSize: 18, color: "#FF6B35", fontWeight: "bold" },
   qtyText:          { fontSize: 16, fontWeight: "bold", color: "#333", minWidth: 20, textAlign: "center" },
   bottomButtons:    { position: "absolute", bottom: 0, left: 0, right: 0 },
-  cartButton:       { backgroundColor: "#FF6B35", margin: 15, padding: 18, borderRadius: 10, alignItems: "center" },
+  cartButton:       { backgroundColor: "#FF6B35", margin: 15, padding: 18, borderRadius: 12, alignItems: "center" },
   cartButtonText:   { color: "#fff", fontSize: 15, fontWeight: "bold" },
 });
