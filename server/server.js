@@ -20,11 +20,12 @@ app.use(express.json());
 app.use(cors());
 
 // Routes
-app.use("/api/auth", require("./routes/auth"));
+app.use("/api/auth",      require("./routes/auth"));
 app.use("/api/businesses", require("./routes/business"));
-app.use("/api/orders", require("./routes/order"));
+app.use("/api/orders",    require("./routes/order"));
+app.use("/api/upload",    require("./routes/upload")); // ✅ Route upload Cloudinary
 
-app.get("/", (req, res) => res.send("Hubify API fonctionne"));
+app.get("/", (req, res) => res.send("Kaviroq API fonctionne"));
 
 // Socket.io
 io.on("connection", (socket) => {
