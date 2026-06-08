@@ -76,6 +76,23 @@ export default function BusinessMenuScreen() {
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  // ✅ Ouvrir le chat avec cette entreprise
+  const openChat = async () => {
+    const userJson = await AsyncStorage.getItem("kaviroq_user");
+    if (!userJson) { router.replace("/login"); return; }
+    const user = JSON.parse(userJson);
+    const clientId = user.id || user._id;
+    const roomId = `${clientId}_${id}`;
+
+    router.push({
+      pathname: "/chat",
+      params: {
+        roomId,
+        businessName: business?.name || "Entreprise",
+      }
+    });
+  };
+
   const placeOrder = async () => {
     if (cart.length === 0) { Alert.alert("Panier vide", "Ajoutez des articles avant de commander."); return; }
     if (orderType === "delivery" && !address.trim()) { Alert.alert("Adresse requise", "Entrez votre adresse de livraison."); return; }
@@ -201,11 +218,18 @@ export default function BusinessMenuScreen() {
             <Text style={styles.statusText}>{business.isOpen ? "Ouvert" : "Fermé"}</Text>
           </View>
         </View>
-        {cartCount > 0 && (
-          <TouchableOpacity style={styles.cartBadge} onPress={() => setShowCart(true)}>
-            <Text style={styles.cartBadgeText}>🛒 {cartCount}</Text>
+
+        {/* ✅ Boutons chat + panier */}
+        <View style={{ gap: 8, alignItems: "flex-end" }}>
+          <TouchableOpacity style={styles.chatBadge} onPress={openChat}>
+            <Text style={styles.chatBadgeText}>💬 Contacter</Text>
           </TouchableOpacity>
-        )}
+          {cartCount > 0 && (
+            <TouchableOpacity style={styles.cartBadge} onPress={() => setShowCart(true)}>
+              <Text style={styles.cartBadgeText}>🛒 {cartCount}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {business.description && (
@@ -276,6 +300,8 @@ const styles = StyleSheet.create({
   statusRow:          { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 },
   statusDot:          { width: 8, height: 8, borderRadius: 4 },
   statusText:         { fontSize: 12, color: "#aaa" },
+  chatBadge:          { backgroundColor: "#FF6B35", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 },
+  chatBadgeText:      { color: "#fff", fontWeight: "700", fontSize: 13 },
   cartBadge:          { backgroundColor: "#F59E0B", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 },
   cartBadgeText:      { color: "#fff", fontWeight: "700", fontSize: 13 },
   description:        { padding: 16, fontSize: 13, color: "#666", backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#eee" },
