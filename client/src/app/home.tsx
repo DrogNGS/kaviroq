@@ -30,7 +30,6 @@ const categories = [
   { icon: "⚡", name: "Services",    value: "cafe",       color: "#FF9800", bg: "#FFF3E0" },
 ];
 
-// Options de filtre
 const FILTER_OPTIONS = [
   { label: "Tous", value: null },
   { label: "Ouvert maintenant", value: "open" },
@@ -158,9 +157,7 @@ export default function HomeScreen() {
       (b.description ?? "").toLowerCase().includes(searchQuery.toLowerCase())
     )
     .filter(b => {
-      if (activeFilter === "open") {
-        return openStatus[b._id] !== undefined ? openStatus[b._id] : b.isOpen;
-      }
+      if (activeFilter === "open") return openStatus[b._id] !== undefined ? openStatus[b._id] : b.isOpen;
       return true;
     });
 
@@ -175,7 +172,6 @@ export default function HomeScreen() {
       lng: p.location?.coordinates?.[0] ?? -4.024429,
       isOpen: openStatus[p._id] !== undefined ? openStatus[p._id] : p.isOpen,
     }));
-
     return `<!DOCTYPE html><html><head>
       <meta name="viewport" content="width=device-width,initial-scale=1">
       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -213,39 +209,19 @@ export default function HomeScreen() {
     const html = buildMapHtml(restaurants);
     if (Platform.OS === "web") {
       return (
-        <iframe
-          srcDoc={html}
-          style={{ width: "100%", height: "100%", border: "none" } as any}
-          onLoad={() => {
-            window.addEventListener("message", (event) => {
-              if (event.data?.type === "openBusiness") {
-                handleOpen(event.data.id, event.data.name, event.data.category);
-              }
-            });
-          }}
-        />
+        <iframe srcDoc={html} style={{ width: "100%", height: "100%", border: "none" } as any}
+          onLoad={() => { window.addEventListener("message", (event) => { if (event.data?.type === "openBusiness") handleOpen(event.data.id, event.data.name, event.data.category); }); }} />
       );
     }
     const { WebView } = require("react-native-webview");
     return (
-      <WebView
-        source={{ html }}
-        style={{ flex: 1 }}
-        onMessage={(event: any) => {
-          try {
-            const data = JSON.parse(event.nativeEvent.data);
-            if (data.type === "openBusiness") handleOpen(data.id, data.name, data.category);
-          } catch {}
-        }}
-      />
+      <WebView source={{ html }} style={{ flex: 1 }}
+        onMessage={(event: any) => { try { const data = JSON.parse(event.nativeEvent.data); if (data.type === "openBusiness") handleOpen(data.id, data.name, data.category); } catch {} }} />
     );
   };
 
   return (
-    // ✅ CHANGEMENT 1 : fond gris doux au lieu du noir pur
-    <View style={{ flex: 1, backgroundColor: "#1C1C2E" }}>
-
-      {/* Notification temps réel */}
+    <View style={{ flex: 1, backgroundColor: "#0F0F1E" }}>
       {notification && (
         <Animated.View style={[styles.notifBanner, { transform: [{ translateY: notifAnim }] }]}>
           <View style={[styles.notifDot, { backgroundColor: notification.isOpen ? "#10B981" : "#EF4444" }]} />
@@ -256,10 +232,10 @@ export default function HomeScreen() {
         </Animated.View>
       )}
 
-      {/* ✅ CHANGEMENT 2 : Modal de filtres */}
       <Modal visible={showFilterModal} transparent animationType="slide" onRequestClose={() => setShowFilterModal(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowFilterModal(false)}>
           <View style={styles.filterModal}>
+            <View style={styles.filterModalHandle} />
             <Text style={styles.filterModalTitle}>Filtrer par</Text>
             {FILTER_OPTIONS.map((opt) => (
               <TouchableOpacity
@@ -267,9 +243,7 @@ export default function HomeScreen() {
                 style={[styles.filterOption, activeFilter === opt.value && styles.filterOptionActive]}
                 onPress={() => applyFilter(opt.value)}
               >
-                <Text style={[styles.filterOptionText, activeFilter === opt.value && styles.filterOptionTextActive]}>
-                  {opt.label}
-                </Text>
+                <Text style={[styles.filterOptionText, activeFilter === opt.value && styles.filterOptionTextActive]}>{opt.label}</Text>
                 {activeFilter === opt.value && <Text style={styles.filterCheck}>✓</Text>}
               </TouchableOpacity>
             ))}
@@ -283,19 +257,14 @@ export default function HomeScreen() {
         style={styles.container}
       >
         <Navigation cartCount={0} />
+        <View style={styles.mapContainer}><MapComponent /></View>
 
-        {/* ✅ CHANGEMENT 3 : Carte réduite (220px au lieu de 280px) */}
-        <View style={styles.mapContainer}>
-          <MapComponent />
-        </View>
-
-        {/* ✅ CHANGEMENT 4 : Barre de recherche avec bouton filtre */}
         <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={styles.searchInput}
             placeholder="Rechercher un restaurant, plat..."
-            placeholderTextColor="#bbb"
+            placeholderTextColor="rgba(255,255,255,0.35)"
             value={searchQuery}
             onChangeText={setSearchQuery}
             onFocus={() => setSearchFocused(true)}
@@ -306,25 +275,16 @@ export default function HomeScreen() {
               <Text style={styles.clearText}>✕</Text>
             </TouchableOpacity>
           )}
-          {/* Bouton filtre */}
-          <TouchableOpacity
-            style={[styles.filterBtn, activeFilter && styles.filterBtnActive]}
-            onPress={() => setShowFilterModal(true)}
-          >
+          <TouchableOpacity style={[styles.filterBtn, activeFilter && styles.filterBtnActive]} onPress={() => setShowFilterModal(true)}>
             <Text style={styles.filterBtnIcon}>⚙️</Text>
             {activeFilter && <View style={styles.filterDot} />}
           </TouchableOpacity>
         </View>
 
-        {/* Indicateur de filtre actif */}
         {activeFilter && (
           <View style={styles.activeFilterRow}>
-            <Text style={styles.activeFilterLabel}>
-              Filtre : {FILTER_OPTIONS.find(f => f.value === activeFilter)?.label}
-            </Text>
-            <TouchableOpacity onPress={() => setActiveFilter(null)}>
-              <Text style={styles.activeFilterClear}>✕ Effacer</Text>
-            </TouchableOpacity>
+            <Text style={styles.activeFilterLabel}>Filtre : {FILTER_OPTIONS.find(f => f.value === activeFilter)?.label}</Text>
+            <TouchableOpacity onPress={() => setActiveFilter(null)}><Text style={styles.activeFilterClear}>✕ Effacer</Text></TouchableOpacity>
           </View>
         )}
 
@@ -337,78 +297,47 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* ✅ CHANGEMENT 5 : Catégories avec couleurs distinctes (déjà appliquées via cat.color) */}
         <View style={styles.categoriesGrid}>
           {categories.map((cat, index) => (
-            <CategoryCard
-              key={index}
-              cat={cat}
-              isSelected={selectedCategory === cat.value}
-              onPress={() => handleCategoryPress(cat.value)}
-            />
+            <CategoryCard key={index} cat={cat} isSelected={selectedCategory === cat.value} onPress={() => handleCategoryPress(cat.value)} />
           ))}
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {searchQuery ? `"${searchQuery}"` : selectedCategory ?? "Près de vous"}
-          </Text>
+          <Text style={styles.sectionTitle}>{searchQuery ? `"${searchQuery}"` : selectedCategory ?? "Près de vous"}</Text>
           <Text style={styles.sectionCount}>{filteredRestaurants.length} résultats</Text>
         </View>
 
         {isLoading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#FF6B35" />
-            <Text style={styles.loadingText}>Chargement...</Text>
-          </View>
+          <View style={styles.loadingBox}><ActivityIndicator size="large" color="#FF6B35" /><Text style={styles.loadingText}>Chargement...</Text></View>
         ) : error ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorEmoji}>😕</Text>
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={refresh}>
-              <Text style={styles.retryText}>Réessayer</Text>
-            </TouchableOpacity>
+            <TouchableOpacity style={styles.retryBtn} onPress={refresh}><Text style={styles.retryText}>Réessayer</Text></TouchableOpacity>
           </View>
         ) : filteredRestaurants.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyEmoji}>🔍</Text>
-            <Text style={styles.emptyText}>
-              {searchQuery ? `Aucun résultat pour "${searchQuery}"` : "Aucun restaurant trouvé"}
-            </Text>
-          </View>
+          <View style={styles.emptyBox}><Text style={styles.emptyEmoji}>🔍</Text><Text style={styles.emptyText}>{searchQuery ? `Aucun résultat pour "${searchQuery}"` : "Aucun restaurant trouvé"}</Text></View>
         ) : (
           filteredRestaurants.map((b) => (
-            <BusinessCard
-              key={b._id}
-              business={b}
-              isOpenOverride={openStatus[b._id]}
-              onPress={() => handleOpen(b._id, b.name, b.category)}
-            />
+            <BusinessCard key={b._id} business={b} isOpenOverride={openStatus[b._id]} onPress={() => handleOpen(b._id, b.name, b.category)} />
           ))
         )}
 
+        {/* ✅ Accès rapide glassmorphisme */}
         <View style={styles.actionSection}>
           <Text style={styles.sectionTitle}>Accès rapide</Text>
           <View style={styles.actionGrid}>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: "#252540" }]}
-              onPress={() => router.push({ pathname: "/chat", params: { businessName: "Support", roomId: "room_1" } })}
-            >
-              <Text style={styles.actionEmoji}>💬</Text>
+            <TouchableOpacity style={styles.actionBtnGlass} onPress={() => router.push({ pathname: "/chat", params: { businessName: "Support", roomId: "room_1" } })} activeOpacity={0.8}>
+              <View style={[styles.actionIconBg, { backgroundColor: "rgba(108,63,197,0.2)" }]}><Text style={styles.actionEmoji}>💬</Text></View>
               <Text style={styles.actionText}>Messages</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: "#FF6B35" }]}
-              onPress={() => router.push("/history")}
-            >
-              <Text style={styles.actionEmoji}>📋</Text>
+            <TouchableOpacity style={[styles.actionBtnGlass, styles.actionBtnOrange]} onPress={() => router.push("/history")} activeOpacity={0.8}>
+              <View style={[styles.actionIconBg, { backgroundColor: "rgba(255,107,53,0.25)" }]}><Text style={styles.actionEmoji}>📋</Text></View>
               <Text style={styles.actionText}>Commandes</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: "#2196F3" }]}
-              onPress={() => router.push("/admin")}
-            >
-              <Text style={styles.actionEmoji}>⚙️</Text>
+            <TouchableOpacity style={[styles.actionBtnGlass, styles.actionBtnBlue]} onPress={() => router.push("/admin")} activeOpacity={0.8}>
+              <View style={[styles.actionIconBg, { backgroundColor: "rgba(33,150,243,0.25)" }]}><Text style={styles.actionEmoji}>⚙️</Text></View>
               <Text style={styles.actionText}>Admin</Text>
             </TouchableOpacity>
           </View>
@@ -419,88 +348,72 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:            { flex: 1, backgroundColor: "#1C1C2E" },
-
-  // Notification
-  notifBanner:          { position: "absolute", top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: "#252540", flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 20, paddingVertical: 12, paddingTop: 50 },
+  container:            { flex: 1, backgroundColor: "#0F0F1E" },
+  notifBanner:          { position: "absolute", top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: "rgba(37,37,64,0.95)", flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 20, paddingVertical: 12, paddingTop: 50, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" },
   notifDot:             { width: 10, height: 10, borderRadius: 5 },
   notifText:            { color: "#fff", fontSize: 13, flex: 1 },
-
-  // ✅ Carte réduite
   mapContainer:         { height: 220, width: "100%", overflow: "hidden" },
-
-  // ✅ Barre de recherche avec filtre
-  searchBar:            { backgroundColor: "#fff", marginHorizontal: 15, marginTop: 14, marginBottom: 4, padding: 12, borderRadius: 14, flexDirection: "row", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4, borderWidth: 1.5, borderColor: "#f0f0f0" },
-  searchBarFocused:     { borderColor: "#FF6B35", shadowOpacity: 0.15 },
+  searchBar:            { backgroundColor: "rgba(255,255,255,0.07)", marginHorizontal: 15, marginTop: 14, marginBottom: 4, padding: 12, borderRadius: 16, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
+  searchBarFocused:     { borderColor: "#FF6B35", backgroundColor: "rgba(255,107,53,0.06)" },
   searchIcon:           { fontSize: 16, marginRight: 8 },
-  searchInput:          { flex: 1, fontSize: 15, color: "#333", padding: 0 },
+  searchInput:          { flex: 1, fontSize: 15, color: "#fff", padding: 0 },
   clearBtn:             { padding: 4 },
-  clearText:            { color: "#bbb", fontSize: 16 },
-  filterBtn:            { marginLeft: 8, padding: 6, borderRadius: 10, backgroundColor: "#f5f5f5", position: "relative" },
-  filterBtnActive:      { backgroundColor: "#FF6B3520" },
+  clearText:            { color: "rgba(255,255,255,0.4)", fontSize: 16 },
+  filterBtn:            { marginLeft: 8, padding: 8, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.08)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", position: "relative" },
+  filterBtnActive:      { backgroundColor: "rgba(255,107,53,0.15)", borderColor: "rgba(255,107,53,0.3)" },
   filterBtnIcon:        { fontSize: 16 },
   filterDot:            { position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: 4, backgroundColor: "#FF6B35" },
-
-  // Filtre actif
   activeFilterRow:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginHorizontal: 15, marginTop: 8, marginBottom: 2 },
   activeFilterLabel:    { fontSize: 12, color: "#FF6B35", fontWeight: "600" },
-  activeFilterClear:    { fontSize: 12, color: "#999" },
-
-  // Sections
+  activeFilterClear:    { fontSize: 12, color: "rgba(255,255,255,0.4)" },
   sectionHeader:        { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginHorizontal: 15, marginTop: 18, marginBottom: 10 },
   sectionTitle:         { fontSize: 18, fontWeight: "700", color: "#fff" },
-  sectionCount:         { fontSize: 13, color: "#999" },
+  sectionCount:         { fontSize: 13, color: "rgba(255,255,255,0.4)" },
   clearFilter:          { fontSize: 13, color: "#FF6B35", fontWeight: "600" },
-
-  // Catégories
   categoriesGrid:       { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 10, gap: 10, marginBottom: 6 },
-  categoryCard:         { backgroundColor: "#fff", padding: 14, borderRadius: 14, alignItems: "center", borderWidth: 1.5, elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
+  categoryCard:         { backgroundColor: "rgba(255,255,255,0.07)", padding: 14, borderRadius: 14, alignItems: "center", borderWidth: 1.5 },
   categoryIconBg:       { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", marginBottom: 6 },
   categoryIcon:         { fontSize: 26 },
-  categoryName:         { fontSize: 11, color: "#555", textAlign: "center", fontWeight: "600" },
-
-  // Business cards
-  businessCard:         { backgroundColor: "#fff", marginHorizontal: 15, marginBottom: 10, padding: 14, borderRadius: 14, flexDirection: "row", alignItems: "center", gap: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 3 },
+  categoryName:         { fontSize: 11, color: "rgba(255,255,255,0.7)", textAlign: "center", fontWeight: "600" },
+  businessCard:         { backgroundColor: "rgba(255,255,255,0.07)", marginHorizontal: 15, marginBottom: 10, padding: 14, borderRadius: 14, flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
   businessIconBg:       { width: 54, height: 54, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   businessEmoji:        { fontSize: 28 },
   businessNameRow:      { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 5 },
-  businessName:         { fontSize: 15, fontWeight: "700", color: "#1a1a1a", flex: 1 },
+  businessName:         { fontSize: 15, fontWeight: "700", color: "#fff", flex: 1 },
   statusBadge:          { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   statusDot:            { width: 6, height: 6, borderRadius: 3 },
   statusText:           { fontSize: 11, fontWeight: "700" },
   businessMeta:         { flexDirection: "row", alignItems: "center", gap: 8 },
   categoryPill:         { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
   categoryPillText:     { fontSize: 11, fontWeight: "600" },
-  businessAddress:      { fontSize: 11, color: "#999", flex: 1 },
-  businessDesc:         { fontSize: 12, color: "#bbb", marginTop: 4 },
-  businessArrow:        { fontSize: 24, fontWeight: "300", color: "#ccc" },
-
-  // États
+  businessAddress:      { fontSize: 11, color: "rgba(255,255,255,0.4)", flex: 1 },
+  businessDesc:         { fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 4 },
+  businessArrow:        { fontSize: 24, fontWeight: "300", color: "rgba(255,255,255,0.3)" },
   loadingBox:           { alignItems: "center", padding: 30, gap: 10 },
-  loadingText:          { color: "#999", fontSize: 14 },
+  loadingText:          { color: "rgba(255,255,255,0.4)", fontSize: 14 },
   errorBox:             { alignItems: "center", padding: 30, gap: 10 },
   errorEmoji:           { fontSize: 40 },
   errorText:            { color: "#E24B4A", textAlign: "center" },
-  retryBtn:             { backgroundColor: "#FF6B35", paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
-  retryText:            { color: "#fff", fontWeight: "600" },
+  retryBtn:             { backgroundColor: "rgba(255,107,53,0.15)", borderWidth: 1, borderColor: "rgba(255,107,53,0.3)", paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
+  retryText:            { color: "#FF6B35", fontWeight: "600" },
   emptyBox:             { alignItems: "center", padding: 30, gap: 10 },
   emptyEmoji:           { fontSize: 40 },
-  emptyText:            { color: "#999", fontSize: 15 },
-
-  // Accès rapide
+  emptyText:            { color: "rgba(255,255,255,0.4)", fontSize: 15 },
   actionSection:        { marginHorizontal: 15, marginTop: 20, marginBottom: 10 },
   actionGrid:           { flexDirection: "row", gap: 10, marginTop: 10 },
-  actionBtn:            { flex: 1, padding: 16, borderRadius: 14, alignItems: "center", gap: 6 },
-  actionEmoji:          { fontSize: 24 },
-  actionText:           { color: "#fff", fontWeight: "700", fontSize: 13 },
-
-  // ✅ Modal de filtres
-  modalOverlay:         { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  filterModal:          { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  filterModalTitle:     { fontSize: 18, fontWeight: "800", color: "#1a1a1a", marginBottom: 16 },
-  filterOption:         { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, marginBottom: 8, backgroundColor: "#f5f5f5" },
-  filterOptionActive:   { backgroundColor: "#FF6B3515", borderWidth: 1.5, borderColor: "#FF6B35" },
-  filterOptionText:     { fontSize: 15, color: "#444", fontWeight: "500" },
+  actionBtnGlass:       { flex: 1, padding: 14, borderRadius: 16, alignItems: "center", gap: 8, backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
+  actionBtnOrange:      { backgroundColor: "rgba(255,107,53,0.1)", borderColor: "rgba(255,107,53,0.2)" },
+  actionBtnBlue:        { backgroundColor: "rgba(33,150,243,0.1)", borderColor: "rgba(33,150,243,0.2)" },
+  actionIconBg:         { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  actionEmoji:          { fontSize: 22 },
+  actionText:           { color: "rgba(255,255,255,0.8)", fontWeight: "700", fontSize: 12 },
+  modalOverlay:         { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
+  filterModal:          { backgroundColor: "#1a1a2e", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, borderTopWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
+  filterModalHandle:    { width: 40, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.2)", alignSelf: "center", marginBottom: 16 },
+  filterModalTitle:     { fontSize: 18, fontWeight: "800", color: "#fff", marginBottom: 16 },
+  filterOption:         { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, marginBottom: 8, backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.07)" },
+  filterOptionActive:   { backgroundColor: "rgba(255,107,53,0.12)", borderColor: "rgba(255,107,53,0.3)" },
+  filterOptionText:     { fontSize: 15, color: "rgba(255,255,255,0.6)", fontWeight: "500" },
   filterOptionTextActive: { color: "#FF6B35", fontWeight: "700" },
   filterCheck:          { fontSize: 16, color: "#FF6B35", fontWeight: "800" },
 });

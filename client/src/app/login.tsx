@@ -26,11 +26,8 @@ export default function LoginScreen() {
         const userJson = await AsyncStorage.getItem("kaviroq_user");
         if (userJson) {
           const user = JSON.parse(userJson);
-          if (user.role === "business") {
-            router.replace("/dashboard");
-          } else {
-            router.replace("/home");
-          }
+          if (user.role === "business") router.replace("/dashboard");
+          else router.replace("/home");
         } else {
           router.replace("/home");
         }
@@ -45,8 +42,13 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+
+        {/* Cercles décoratifs */}
         <View style={styles.circle1} />
         <View style={styles.circle2} />
+        <View style={styles.circle3} />
+
+        {/* Logo */}
         <View style={styles.logoBox}>
           <View style={styles.logoIcon}>
             <Text style={styles.logoEmoji}>🚀</Text>
@@ -54,12 +56,15 @@ export default function LoginScreen() {
           <Text style={styles.logo}>KAVIROQ</Text>
           <Text style={styles.tagline}>Bon retour parmi nous !</Text>
         </View>
+
+        {/* Formulaire */}
         <View style={styles.form}>
           {message ? (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>⚠️ {message}</Text>
             </View>
           ) : null}
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <View style={styles.inputBox}>
@@ -67,7 +72,7 @@ export default function LoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="votre@email.com"
-                placeholderTextColor={theme.textLight}
+                placeholderTextColor="rgba(255,255,255,0.3)"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -75,6 +80,7 @@ export default function LoginScreen() {
               />
             </View>
           </View>
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Mot de passe</Text>
             <View style={styles.inputBox}>
@@ -82,26 +88,40 @@ export default function LoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="••••••••"
-                placeholderTextColor={theme.textLight}
+                placeholderTextColor="rgba(255,255,255,0.3)"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
               />
             </View>
           </View>
+
+          {/* ✅ Bouton principal moderne */}
           <TouchableOpacity
             style={[styles.btn, loading && { opacity: 0.7 }]}
             onPress={handleLogin}
             disabled={loading}
+            activeOpacity={0.85}
           >
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.btnText}>Se connecter →</Text>
-            }
+            <View style={styles.btnInner}>
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <>
+                    <Text style={styles.btnText}>Se connecter</Text>
+                    <Text style={styles.btnArrow}>→</Text>
+                  </>
+              }
+            </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.linkBox} onPress={() => router.push("/register")}>
-            <Text style={styles.linkText}>
-              Pas de compte ? <Text style={styles.link}>Créer un compte</Text>
+
+          {/* ✅ Bouton secondaire glassmorphisme */}
+          <TouchableOpacity
+            style={styles.btnGlass}
+            onPress={() => router.push("/register")}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.btnGlassText}>
+              Pas de compte ? <Text style={styles.btnGlassHighlight}>Créer un compte</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -111,26 +131,46 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:   { flex: 1, backgroundColor: theme.dark },
-  content:     { flexGrow: 1, padding: 24, paddingTop: 60, position: "relative" },
-  circle1:     { position: "absolute", width: 200, height: 200, borderRadius: 100, backgroundColor: "rgba(108,63,197,0.2)", top: -50, right: -50 },
-  circle2:     { position: "absolute", width: 150, height: 150, borderRadius: 75, backgroundColor: "rgba(255,107,53,0.1)", bottom: 100, left: -50 },
-  logoBox:     { alignItems: "center", marginBottom: 40, marginTop: 20 },
-  logoIcon:    { width: 70, height: 70, borderRadius: 20, backgroundColor: "rgba(255,107,53,0.15)", borderWidth: 1.5, borderColor: "rgba(255,107,53,0.3)", alignItems: "center", justifyContent: "center", marginBottom: 16 },
-  logoEmoji:   { fontSize: 32 },
-  logo:        { fontSize: 32, fontWeight: "900", color: "#fff", letterSpacing: 4 },
-  tagline:     { fontSize: 14, color: "rgba(255,255,255,0.5)", marginTop: 6 },
-  form:        { backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 20, padding: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
-  errorBox:    { backgroundColor: "rgba(239,68,68,0.15)", borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: "rgba(239,68,68,0.3)" },
-  errorText:   { color: "#FCA5A5", fontSize: 13 },
-  inputGroup:  { marginBottom: 16 },
-  label:       { color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: "600", marginBottom: 8 },
-  inputBox:    { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", paddingHorizontal: 14 },
-  inputIcon:   { fontSize: 16, marginRight: 10 },
-  input:       { flex: 1, color: "#fff", fontSize: 15, paddingVertical: 14 },
-  btn:         { backgroundColor: theme.primary, borderRadius: 12, paddingVertical: 15, alignItems: "center", marginTop: 8 },
-  btnText:     { color: "#fff", fontWeight: "700", fontSize: 16 },
-  linkBox:     { alignItems: "center", marginTop: 16 },
-  linkText:    { color: "rgba(255,255,255,0.5)", fontSize: 14 },
-  link:        { color: theme.primary, fontWeight: "600" },
+  container:          { flex: 1, backgroundColor: "#0F0F1E" },
+  content:            { flexGrow: 1, padding: 24, paddingTop: 60 },
+
+  // Cercles décoratifs
+  circle1:            { position: "absolute", width: 250, height: 250, borderRadius: 125, backgroundColor: "rgba(108,63,197,0.15)", top: -80, right: -80 },
+  circle2:            { position: "absolute", width: 180, height: 180, borderRadius: 90, backgroundColor: "rgba(255,107,53,0.1)", bottom: 80, left: -60 },
+  circle3:            { position: "absolute", width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(33,150,243,0.08)", top: 200, left: 30 },
+
+  // Logo
+  logoBox:            { alignItems: "center", marginBottom: 40, marginTop: 20 },
+  logoIcon:           { width: 74, height: 74, borderRadius: 22, backgroundColor: "rgba(255,107,53,0.12)", borderWidth: 1.5, borderColor: "rgba(255,107,53,0.25)", alignItems: "center", justifyContent: "center", marginBottom: 16,
+                        shadowColor: "#FF6B35", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 10 },
+  logoEmoji:          { fontSize: 34 },
+  logo:               { fontSize: 32, fontWeight: "900", color: "#fff", letterSpacing: 4 },
+  tagline:            { fontSize: 14, color: "rgba(255,255,255,0.4)", marginTop: 6 },
+
+  // Formulaire glassmorphisme
+  form:               { backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 24, padding: 22, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+                        shadowColor: "#000", shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.3, shadowRadius: 30, elevation: 10 },
+
+  errorBox:           { backgroundColor: "rgba(239,68,68,0.12)", borderRadius: 12, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: "rgba(239,68,68,0.25)" },
+  errorText:          { color: "#FCA5A5", fontSize: 13 },
+
+  inputGroup:         { marginBottom: 16 },
+  label:              { color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: "600", marginBottom: 8 },
+  inputBox:           { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 14 },
+  inputIcon:          { fontSize: 16, marginRight: 10 },
+  input:              { flex: 1, color: "#fff", fontSize: 15, paddingVertical: 14 },
+
+  // ✅ Bouton principal avec dégradé simulé
+  btn:                { borderRadius: 16, marginTop: 8, overflow: "hidden",
+                        shadowColor: "#FF6B35", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 10 },
+  btnInner:           { backgroundColor: "#FF6B35", paddingVertical: 16, paddingHorizontal: 24, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+                        borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
+  btnText:            { color: "#fff", fontWeight: "800", fontSize: 16, letterSpacing: 0.5 },
+  btnArrow:           { color: "rgba(255,255,255,0.8)", fontSize: 18, fontWeight: "700" },
+
+  // ✅ Bouton secondaire glassmorphisme
+  btnGlass:           { marginTop: 12, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 20, alignItems: "center",
+                        backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
+  btnGlassText:       { color: "rgba(255,255,255,0.5)", fontSize: 14 },
+  btnGlassHighlight:  { color: "#FF6B35", fontWeight: "700" },
 });
