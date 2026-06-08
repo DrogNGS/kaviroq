@@ -33,57 +33,78 @@ export default function ChatScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
 
-  useEffect(() => {
-    const init = async () => {
-      const token = await AsyncStorage.getItem("kaviroq_token");
-      if (!token) { router.replace("/login"); return; }
+ useEffect(() => {
+  const init = async () => {
+    const token = await AsyncStorage.getItem("kaviroq_token");
+    if (!token) { router.replace("/login"); return; }
 
-      const userJson = await AsyncStorage.getItem("kaviroq_user");
-      if (userJson) {
-        const user = JSON.parse(userJson);
-        setUserId(user.id || user._id);
-        setUserName(user.name);
+    const userJson = await AsyncStorage.getItem("kaviroq_user");
+    let currentUserId = "";
+    if (userJson) {
+      const user = JSON.parse(userJson);
+      currentUserId = user.id || user._id;
+      setUserId(currentUserId);
+      setUserName(user.name);
+    }
+
+    // ✅ AJOUT : Charger l'historique depuis MongoDB
+    try {
+      const res = await fetch(`${API_URL}/api/messages/${roomId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setMessages(data.map((m: any) => ({
+          id: m._id,
+          sender: m.senderId,
+          senderName: m.senderName,
+          text: m.content,
+          timestamp: m.createdAt,
+          isOwn: m.senderId === currentUserId,
+        })));
       }
+    } catch (err) {
+      console.error("Erreur historique:", err);
+    }
 
-      const socket = getSocket();
+    const socket = getSocket();
 
-      socket.on("connect", () => {
-        socket.emit("join_room", roomId);
-        setLoading(false);
+    socket.on("connect", () => {
+      socket.emit("join_room", roomId);
+      setLoading(false);
+    });
+
+    if (socket.connected) {
+      socket.emit("join_room", roomId);
+      setLoading(false);
+    }
+
+    socket.on("receive_message", (data: any) => {
+      setMessages(prev => {
+        const msg: Message = {
+          id: data.id ?? Math.random().toString(),
+          sender: data.sender,
+          senderName: data.senderName,
+          text: data.text,
+          timestamp: data.timestamp ?? new Date().toISOString(),
+          isOwn: data.sender === currentUserId, // ✅ CORRECTION isOwn
+        };
+        return [...prev, msg];
       });
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    });
 
-      if (socket.connected) {
-        socket.emit("join_room", roomId);
-        setLoading(false);
-      }
+    socket.on("connect_error", () => {
+      setLoading(false);
+    });
+  };
 
-      socket.on("receive_message", (data: any) => {
-        const userJson = AsyncStorage.getItem("kaviroq_user");
-        setMessages(prev => {
-          const msg: Message = {
-            id: data.id ?? Math.random().toString(),
-            sender: data.sender,
-            senderName: data.senderName,
-            text: data.text,
-            timestamp: data.timestamp ?? new Date().toISOString(),
-            isOwn: data.sender === prev[0]?.sender ? false : data.isOwn,
-          };
-          return [...prev, msg];
-        });
-        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-      });
-
-      socket.on("connect_error", () => {
-        setLoading(false);
-      });
-    };
-
-    init();
-    return () => {
-      const socket = getSocket();
-      socket.off("receive_message");
-    };
-  }, [roomId]);
+  init();
+  return () => {
+    const socket = getSocket();
+    socket.off("receive_message");
+  };
+}, [roomId]);
 
   const sendMessage = async () => {
     if (!input.trim() || !userId) return;
