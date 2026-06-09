@@ -33,106 +33,106 @@ export default function ChatScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
 
- useEffect(() => {
-  const init = async () => {
-    const token = await AsyncStorage.getItem("kaviroq_token");
-    if (!token) { router.replace("/login"); return; }
+  // ✅ Garder userId dans un ref pour l'utiliser dans les callbacks socket
+  const userIdRef = useRef<string>("");
+  const userNameRef = useRef<string>("");
 
-    const userJson = await AsyncStorage.getItem("kaviroq_user");
-    let currentUserId = "";
-    if (userJson) {
-      const user = JSON.parse(userJson);
-      currentUserId = user.id || user._id;
-      setUserId(currentUserId);
-      setUserName(user.name);
-    }
+  useEffect(() => {
+    const init = async () => {
+      const token = await AsyncStorage.getItem("kaviroq_token");
+      if (!token) { router.replace("/login"); return; }
 
-    // ✅ AJOUT : Charger l'historique depuis MongoDB
-    try {
-      const res = await fetch(`${API_URL}/api/messages/${roomId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setMessages(data.map((m: any) => ({
-          id: m._id,
-          sender: m.senderId,
-          senderName: m.senderName,
-          text: m.content,
-          timestamp: m.createdAt,
-          isOwn: m.senderId === currentUserId,
-        })));
+      const userJson = await AsyncStorage.getItem("kaviroq_user");
+      let currentUserId = "";
+      if (userJson) {
+        const user = JSON.parse(userJson);
+        currentUserId = user.id || user._id;
+        setUserId(currentUserId);
+        setUserName(user.name);
+        userIdRef.current = currentUserId;
+        userNameRef.current = user.name;
       }
-    } catch (err) {
-      console.error("Erreur historique:", err);
-    }
 
-    const socket = getSocket();
+      // Charger l'historique depuis MongoDB
+      try {
+        const res = await fetch(`${API_URL}/api/messages/${roomId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setMessages(data.map((m: any) => ({
+            id: m._id,
+            sender: m.senderId,
+            senderName: m.senderName,
+            text: m.content,
+            timestamp: m.createdAt,
+            isOwn: m.senderId === currentUserId,
+          })));
+        }
+      } catch (err) {
+        console.error("Erreur historique:", err);
+      }
 
-    socket.on("connect", () => {
-      socket.emit("join_room", roomId);
-      setLoading(false);
-    });
+      const socket = getSocket();
 
-    if (socket.connected) {
-      socket.emit("join_room", roomId);
-      setLoading(false);
-    }
+      const joinRoom = () => {
+        socket.emit("join_room", roomId);
+        setLoading(false);
+      };
 
-    socket.on("receive_message", (data: any) => {
-      setMessages(prev => {
+      if (socket.connected) {
+        joinRoom();
+      } else {
+        socket.on("connect", joinRoom);
+      }
+
+      // ✅ FIX : Ne pas ajouter localement, laisser le socket gérer TOUS les messages
+      socket.on("receive_message", (data: any) => {
         const msg: Message = {
-          id: data.id ?? Math.random().toString(),
+          id: data.id ?? data._id ?? Math.random().toString(),
           sender: data.sender,
           senderName: data.senderName,
           text: data.text,
           timestamp: data.timestamp ?? new Date().toISOString(),
-          isOwn: data.sender === currentUserId, // ✅ CORRECTION isOwn
+          isOwn: data.sender === userIdRef.current,
         };
-        return [...prev, msg];
+        setMessages(prev => {
+          // Éviter les doublons par id
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
       });
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-    });
 
-    socket.on("connect_error", () => {
-      setLoading(false);
-    });
-  };
+      socket.on("connect_error", () => setLoading(false));
+    };
 
-  init();
-  return () => {
-    const socket = getSocket();
-    socket.off("receive_message");
-  };
-}, [roomId]);
+    init();
+
+    return () => {
+      const socket = getSocket();
+      socket.off("receive_message");
+      socket.off("connect");
+    };
+  }, [roomId]);
 
   const sendMessage = async () => {
-    if (!input.trim() || !userId) return;
+    if (!input.trim() || !userIdRef.current) return;
     setSending(true);
     const text = input.trim();
     setInput("");
 
     try {
       const socket = getSocket();
+      // ✅ FIX : Envoyer seulement via socket, NE PAS ajouter localement
+      // Le serveur va sauvegarder et renvoyer via receive_message à tout le monde y compris l'expéditeur
       socket.emit("send_message", {
         roomId,
-        sender: userId,
-        senderName: userName ?? "Utilisateur",
+        sender: userIdRef.current,
+        senderName: userNameRef.current || "Utilisateur",
         text,
         timestamp: new Date().toISOString(),
       });
-
-      // Ajouter le message localement
-      const msg: Message = {
-        id: Math.random().toString(),
-        sender: userId,
-        senderName: userName ?? "Utilisateur",
-        text,
-        timestamp: new Date().toISOString(),
-        isOwn: true,
-      };
-      setMessages(prev => [...prev, msg]);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     } catch {
       Alert.alert("Erreur", "Impossible d'envoyer le message");
       setInput(text);
@@ -205,7 +205,6 @@ export default function ChatScreen() {
           value={input}
           onChangeText={setInput}
           multiline
-          onSubmitEditing={sendMessage}
         />
         <TouchableOpacity
           style={[styles.sendBtn, !input.trim() && { opacity: 0.5 }]}
