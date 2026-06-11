@@ -14,8 +14,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+  "foregroundImage": "./assets/images/android-icon-foreground.png",
+  "backgroundImage": "./assets/images/android-icon-background.png"
       },
       "package": "com.drogon10.kaviroq",
       "edgeToEdgeEnabled": true
