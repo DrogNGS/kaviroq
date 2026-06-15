@@ -32,9 +32,11 @@ router.put("/:roomId/read", auth, async (req, res) => {
 router.get("/conversations/list", auth, async (req, res) => {
   try {
     const userId = req.user.id;
+    const User = require("../models/User");
+    const Business = require("../models/Business");
 
     const conversations = await Message.aggregate([
-      { $match: { roomId: { $regex: userId } } },
+      { $match: { roomId: { $regex: `^(${userId}_|.*_${userId}$)` } } },
       { $sort: { createdAt: -1 } },
       {
         $group: {
@@ -57,7 +59,25 @@ router.get("/conversations/list", auth, async (req, res) => {
       { $sort: { lastMessageAt: -1 } }
     ]);
 
-    res.json(conversations);
+    const enriched = await Promise.all(conversations.map(async (conv) => {
+      const [idA, idB] = conv._id.split("_");
+      const otherUserId = idA === userId ? idB : idA;
+
+      let otherName = "Utilisateur";
+      const otherUser = await User.findById(otherUserId).select("name role");
+      if (otherUser) {
+        if (otherUser.role === "business") {
+          const business = await Business.findOne({ owner: otherUser._id }).select("name");
+          otherName = business?.name || otherUser.name;
+        } else {
+          otherName = otherUser.name;
+        }
+      }
+
+      return { ...conv, businessName: otherName };
+    }));
+
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

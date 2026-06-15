@@ -4,6 +4,9 @@
       "eas": {
         "projectId": "b001e9b9-8b50-443b-9495-97e4ea2e3771"
       }
+    },
+    "android": {
+      "package": "com.drogon10.kaviroq"
     }
   }
 }

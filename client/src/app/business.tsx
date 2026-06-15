@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { apiClient } from "../services/apiClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface MenuItem {
   _id: string;
@@ -17,6 +18,7 @@ interface MenuItem {
 
 interface Business {
   _id: string;
+  owner: string;
   name: string;
   category: string;
   description?: string;
@@ -25,7 +27,6 @@ interface Business {
   isOpen: boolean;
   menu: MenuItem[];
 }
-
 interface CartItem extends MenuItem {
   quantity: number;
 }
@@ -97,15 +98,23 @@ export default function BusinessScreen() {
     });
   };
 
-  const handleChat = () => {
-    router.push({
-      pathname: "/chat",
-      params: {
-        businessName: business?.name ?? businessName ?? "",
-        roomId: `business_${business?._id ?? businessId ?? "unknown"}`
-      }
-    });
-  };
+  const handleChat = async () => {
+  const userJson = await AsyncStorage.getItem("kaviroq_user");
+  let clientId = "unknown";
+  if (userJson) {
+    const user = JSON.parse(userJson);
+    clientId = user.id || user._id;
+  }
+  const businessOwnerId = business?.owner ?? "unknown";
+
+  router.push({
+    pathname: "/chat",
+    params: {
+      businessName: business?.name ?? businessName ?? "",
+      roomId: `${clientId}_${businessOwnerId}`
+    }
+  });
+};
 
   if (loading) {
     return (

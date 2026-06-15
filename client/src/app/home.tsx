@@ -251,14 +251,15 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </Modal>
 
+      {/* ✅ Carte fixe en haut (sticky) */}
+      <Navigation cartCount={0} />
+      <View style={styles.mapContainer}><MapComponent /></View>
+
       <ScrollView
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} colors={["#FF6B35"]} />}
         contentContainerStyle={{ paddingBottom: 300 }}
         style={styles.container}
       >
-        <Navigation cartCount={0} />
-        <View style={styles.mapContainer}><MapComponent /></View>
-
         <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
