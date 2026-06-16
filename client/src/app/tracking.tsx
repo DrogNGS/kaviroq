@@ -12,7 +12,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = (process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api").replace("/api", "");
 
 const STATUS_LABELS: Record<string, string> = {
   pending:    'En attente de confirmation...',
@@ -215,4 +215,5 @@ const styles = StyleSheet.create({
   backBtn:        { backgroundColor: '#F97316', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   backText:       { color: '#fff', fontWeight: '700', fontSize: 15 },
 });
+
 

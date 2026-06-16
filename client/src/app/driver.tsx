@@ -12,7 +12,7 @@ import { io, Socket } from 'socket.io-client';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = (process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api").replace("/api", "");
 
 export default function DriverScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
@@ -165,4 +165,5 @@ const styles = StyleSheet.create({
   btnStop:        { backgroundColor: '#22C55E', borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
   btnText:        { color: '#fff', fontWeight: '700', fontSize: 16 },
 });
+
 

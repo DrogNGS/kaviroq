@@ -8,7 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../theme";
 import AppHeader from "../components/AppHeader";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = (process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api").replace("/api", "");
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string; icon: string }> = {
   pending:   { label: "En attente",  color: "#F59E0B", bg: "rgba(245,158,11,0.15)",  icon: "⏳" },
@@ -284,3 +284,4 @@ const styles = StyleSheet.create({
   totalText:      { fontSize: 15, fontWeight: "bold", color: theme.primary },
   refText:        { fontSize: 11, color: "rgba(255,255,255,0.2)", marginTop: 8, textAlign: "right" },
 });
+

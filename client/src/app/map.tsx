@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import WebView from "react-native-webview";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = (process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api").replace("/api", "");
 
 interface Business {
   _id: string;
@@ -149,3 +149,4 @@ const styles = StyleSheet.create({
   listItemCategory: { fontSize: 12, color: "#999", marginTop: 4 },
   listItemArrow:  { fontSize: 18, color: "#FF6B35" },
 });
+

@@ -8,7 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../theme";
 import AppHeader from "../components/AppHeader";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = (process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api").replace("/api", "");
 
 const STATUS_FLOW: Record<string, string> = {
   pending: "confirmed", confirmed: "ready", ready: "delivered",
@@ -269,3 +269,4 @@ const styles = StyleSheet.create({
   nextBtnText:   { color: "#fff", fontWeight: "bold", fontSize: 13 },
   refText:       { fontSize: 11, color: "rgba(255,255,255,0.2)", marginTop: 8, textAlign: "right" },
 });
+
