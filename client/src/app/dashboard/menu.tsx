@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, TextInput, Switch, Modal, ScrollView, Image,
+  ActivityIndicator, Alert, TextInput, Switch, Modal, ScrollView, Platform, Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -162,42 +162,57 @@ export default function CatalogueScreen() {
 
   // ✅ Upload photo depuis la galerie
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission refusée", "Autorisez l'accès à la galerie.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setUploadingImg(true);
-      try {
-        const token = await getToken();
-        const formData = new FormData();
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== "granted") {
+    Alert.alert("Permission refusée", "Autorisez l'accès à la galerie.");
+    return;
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    allowsEditing: true,
+    aspect: [4, 3],
+    quality: 0.8,
+    base64: true,
+  });
+
+  if (!result.canceled && result.assets[0]) {
+    setUploadingImg(true);
+    try {
+      const token = await getToken();
+      const asset = result.assets[0];
+      const formData = new FormData();
+
+      if (Platform.OS === "web") {
+        const base64 = asset.base64!;
+        const byteString = atob(base64);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+        const blob = new Blob([ab], { type: "image/jpeg" });
+        formData.append("image", blob, "product.jpg");
+      } else {
         formData.append("image", {
-          uri: result.assets[0].uri,
+          uri: asset.uri,
           name: "product.jpg",
           type: "image/jpeg",
         } as any);
-        const res = await fetch(`${BASE_URL}/api/upload`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setForm(prev => ({ ...prev, image: data.url }));
-      } catch {
-        Alert.alert("Erreur", "Impossible d'uploader la photo");
-      } finally {
-        setUploadingImg(false);
       }
-    }
-  };
 
+      const res = await fetch(`${BASE_URL}/api/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setForm(prev => ({ ...prev, image: data.url }));
+    } catch {
+      Alert.alert("Erreur", "Impossible d'uploader la photo");
+    } finally {
+      setUploadingImg(false);
+    }
+  }
+};
   const openAdd = () => {
     setEditItem(null);
     setForm({ ...EMPTY_FORM, category: specs.productCategories[0] });

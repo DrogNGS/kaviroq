@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useState } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, ScrollView, Image
+  TextInput, ActivityIndicator, Alert, ScrollView, Image, Platform
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -54,61 +54,74 @@ export default function ProfileScreen() {
     }
   };
 
-  // ✅ Upload photo de profil
-  const pickAvatar = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission refusée", "Autorisez l'accès à la galerie dans les paramètres.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setUploadingPhoto(true);
-      try {
-        const token = await AsyncStorage.getItem("kaviroq_token");
-        const formData = new FormData();
+// ✅ Upload photo de profil
+const pickAvatar = async () => {
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== "granted") {
+    Alert.alert("Permission refusée", "Autorisez l'accès à la galerie dans les paramètres.");
+    return;
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 0.8,
+    base64: true,
+  });
+
+  if (!result.canceled && result.assets[0]) {
+    setUploadingPhoto(true);
+    try {
+      const token = await AsyncStorage.getItem("kaviroq_token");
+      const asset = result.assets[0];
+      const formData = new FormData();
+
+      if (Platform.OS === "web") {
+        const base64 = asset.base64!;
+        const byteString = atob(base64);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+        const blob = new Blob([ab], { type: "image/jpeg" });
+        formData.append("image", blob, "avatar.jpg");
+      } else {
         formData.append("image", {
-          uri: result.assets[0].uri,
+          uri: asset.uri,
           name: "avatar.jpg",
           type: "image/jpeg",
         } as any);
-        const res = await fetch(`${API_URL}/api/upload`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setAvatar(data.url);
-
-        // Sauvegarder dans le profil
-        await fetch(`${API_URL}/api/auth/profile`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ name, email, avatar: data.url }),
-        });
-
-        // Mettre à jour AsyncStorage pour Navigation
-        const userJson = await AsyncStorage.getItem("kaviroq_user");
-        if (userJson) {
-          const userObj = JSON.parse(userJson);
-          await AsyncStorage.setItem("kaviroq_user", JSON.stringify({ ...userObj, avatar: data.url }));
-        }
-
-        setMessage({ text: "Photo mise à jour !", type: "success" });
-        setTimeout(() => setMessage(null), 3000);
-      } catch {
-        Alert.alert("Erreur", "Impossible d'uploader la photo");
-      } finally {
-        setUploadingPhoto(false);
       }
+
+      const res = await fetch(`${API_URL}/api/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setAvatar(data.url);
+
+      await fetch(`${API_URL}/api/auth/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name, email, avatar: data.url }),
+      });
+
+      const userJson = await AsyncStorage.getItem("kaviroq_user");
+      if (userJson) {
+        const userObj = JSON.parse(userJson);
+        await AsyncStorage.setItem("kaviroq_user", JSON.stringify({ ...userObj, avatar: data.url }));
+      }
+
+      setMessage({ text: "Photo mise à jour !", type: "success" });
+      setTimeout(() => setMessage(null), 3000);
+    } catch {
+      Alert.alert("Erreur", "Impossible d'uploader la photo");
+    } finally {
+      setUploadingPhoto(false);
     }
-  };
+  }
+};
 
   const saveProfile = async () => {
     if (!name || !email) { setMessage({ text: "Remplis tous les champs", type: "error" }); return; }
