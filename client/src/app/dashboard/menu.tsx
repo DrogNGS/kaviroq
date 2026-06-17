@@ -328,10 +328,7 @@ export default function CatalogueScreen() {
           {/* ✅ Bouton Messages avec badge */}
           <TouchableOpacity
             style={styles.msgBtn}
-            onPress={() => router.push({
-              pathname: "/chat",
-              params: { businessName: business?.name ?? "Support", roomId: `business_${business?._id}` }
-            })}
+            onPress={() => router.push("/conversations")}
           >
             <Text style={styles.msgIcon}>💬</Text>
             {unreadCount > 0 && (
