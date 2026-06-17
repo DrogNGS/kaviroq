@@ -282,7 +282,7 @@ const pickAvatar = async () => {
           <Text style={styles.cardTitle}>Accès rapide</Text>
           {[
             { icon: "📋", label: "Mes commandes",   onPress: () => router.push("/history") },
-            { icon: "💬", label: "Mes messages",    onPress: () => router.push({ pathname: "/chat", params: { businessName: "Support", roomId: "support_1" } }) },
+            { icon: "💬", label: "Mes messages", onPress: () => router.push("/conversations") },
             { icon: "🔔", label: "Notifications",   onPress: () => router.push("/notifications") },
             ...(user?.role === "business" ? [{ icon: "⚙️", label: "Tableau de bord", onPress: () => router.push("/admin") }] : []),
           ].map((item, i, arr) => (
