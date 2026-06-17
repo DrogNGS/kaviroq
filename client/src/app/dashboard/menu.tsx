@@ -240,7 +240,7 @@ export default function CatalogueScreen() {
     try {
       const token = await getToken();
       const newProduct = {
-        _id: editItem?._id || Date.now().toString(),
+        ...(editItem ? { _id: editItem._id } : {}),
         name: form.name,
         price: parseFloat(form.price),
         description: form.description,
