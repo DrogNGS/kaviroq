@@ -47,6 +47,8 @@ export default function ChatScreen() {
       if (userJson) {
         const user = JSON.parse(userJson);
         currentUserId = user.id || user._id;
+        console.log("kaviroq_user:", userJson);
+        console.log("currentUserId:", currentUserId);
         setUserId(currentUserId);
         setUserName(user.name);
         userIdRef.current = currentUserId;

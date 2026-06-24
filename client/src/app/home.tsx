@@ -173,7 +173,7 @@ export default function HomeScreen() {
       isOpen: openStatus[p._id] !== undefined ? openStatus[p._id] : p.isOpen,
     }));
     return `<!DOCTYPE html><html><head>
-      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
       <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
       <style>body{margin:0;padding:0}#map{height:100vh;width:100vw}.pb{background:#FF6B35;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:bold}</style>
@@ -215,8 +215,18 @@ export default function HomeScreen() {
     }
     const { WebView } = require("react-native-webview");
     return (
-      <WebView source={{ html }} style={{ flex: 1 }}
-        onMessage={(event: any) => { try { const data = JSON.parse(event.nativeEvent.data); if (data.type === "openBusiness") handleOpen(data.id, data.name, data.category); } catch {} }} />
+      <WebView
+        source={{ html }}
+        style={{ flex: 1 }}
+        scrollEnabled={false}
+        scalesPageToFit={false}
+        onMessage={(event: any) => {
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.type === "openBusiness") handleOpen(data.id, data.name, data.category);
+          } catch {}
+        }}
+      />
     );
   };
 
@@ -353,7 +363,7 @@ const styles = StyleSheet.create({
   notifBanner:          { position: "absolute", top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: "rgba(37,37,64,0.95)", flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 20, paddingVertical: 12, paddingTop: 50, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" },
   notifDot:             { width: 10, height: 10, borderRadius: 5 },
   notifText:            { color: "#fff", fontSize: 13, flex: 1 },
-  mapContainer:         { height: 220, width: "100%", overflow: "hidden" },
+  mapContainer:         { height: 280, width: "100%", overflow: "hidden" },
   searchBar:            { backgroundColor: "rgba(255,255,255,0.07)", marginHorizontal: 15, marginTop: 14, marginBottom: 4, padding: 12, borderRadius: 16, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
   searchBarFocused:     { borderColor: "#FF6B35", backgroundColor: "rgba(255,107,53,0.06)" },
   searchIcon:           { fontSize: 16, marginRight: 8 },
