@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "../store/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../theme";
+import { loginWithGoogle } from "../services/authService";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -37,6 +38,25 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
+  };
+  const handleGoogle = async () => {
+    setLoading(true);
+    setMessage("");
+    try {
+      await loginWithGoogle();
+      const userJson = await AsyncStorage.getItem("kaviroq_user");
+      if (userJson) {
+        const user = JSON.parse(userJson);
+        if (user.role === "business") router.replace("/dashboard");
+        else router.replace("/home");
+        } else {
+          router.replace("/home");
+        }
+      } catch (e: any) {
+        setMessage(e.message ?? "Erreur connexion Google");
+      } finally {
+        setLoading(false);
+      }
   };
 
   return (
@@ -114,6 +134,16 @@ export default function LoginScreen() {
             </View>
           </TouchableOpacity>
 
+          {/* Bouton Google */}
+          <TouchableOpacity
+            style={styles.btnGoogle}
+            onPress={handleGoogle}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.btnGoogleText}>🇬 Continuer avec Google</Text>
+          </TouchableOpacity>
+
           {/* ✅ Bouton secondaire glassmorphisme */}
           <TouchableOpacity
             style={styles.btnGlass}
@@ -173,4 +203,6 @@ const styles = StyleSheet.create({
                         backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
   btnGlassText:       { color: "rgba(255,255,255,0.5)", fontSize: 14 },
   btnGlassHighlight:  { color: "#FF6B35", fontWeight: "700" },
+  btnGoogle:      { marginTop: 10, borderRadius: 14, paddingVertical: 14, alignItems: "center", backgroundColor: "#fff", borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
+  btnGoogleText:  { color: "#333", fontWeight: "700", fontSize: 15 },
 });
