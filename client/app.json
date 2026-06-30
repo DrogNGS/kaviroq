@@ -14,8 +14,8 @@
     },
     "android": {
       "adaptiveIcon": {
-  "foregroundImage": "./assets/images/android-icon-foreground.png",
-  "backgroundImage": "./assets/images/android-icon-background.png"
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png"
       },
       "package": "com.drogon10.kaviroq",
       "edgeToEdgeEnabled": true
@@ -25,7 +25,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-dev-client"
+      "expo-dev-client",
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
