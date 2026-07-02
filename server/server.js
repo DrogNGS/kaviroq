@@ -5,6 +5,7 @@ const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
 const Message = require("./models/Message");
+require("./firebase-admin");
 
 dotenv.config();
 

@@ -59,8 +59,7 @@ export const loginWithGoogle = async (role?: string) => {
     WebBrowser.maybeCompleteAuthSession();
 
     const redirectUri = makeRedirectUri({ scheme: "kaviroq" });
-    const clientId = "651491972985-android.apps.googleusercontent.com";
-
+    const clientId = "651491972985-ci6tics9dggvdkhjmdij6pjdpliv2pq8.apps.googleusercontent.com";
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=openid%20email%20profile`;
 
     const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);

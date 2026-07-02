@@ -13,13 +13,14 @@
       "bundleIdentifier": "com.drogon10.kaviroq"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png"
-      },
-      "package": "com.drogon10.kaviroq",
-      "edgeToEdgeEnabled": true
-    },
+  "adaptiveIcon": {
+    "foregroundImage": "./assets/images/android-icon-foreground.png",
+    "backgroundImage": "./assets/images/android-icon-background.png"
+  },
+  "package": "com.drogon10.kaviroq",
+  "edgeToEdgeEnabled": true,
+  "googleServicesFile": "./google-services.json"
+  },
     "web": {
       "bundler": "metro"
     },
