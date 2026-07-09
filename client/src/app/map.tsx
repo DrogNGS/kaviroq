@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ActivityIndicator, Alert, ScrollView
@@ -6,6 +6,8 @@ import {
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import WebView from "react-native-webview";
+import * as Location from "expo-location";
+import { Ionicons } from "@expo/vector-icons";
 
 const API_URL = (process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api").replace("/api", "");
 
@@ -18,10 +20,14 @@ interface Business {
 
 export default function MapScreen() {
   const router = useRouter();
+  const webviewRef = useRef<WebView>(null);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
+  // Charger les restaurants
   useEffect(() => {
     const fetchBusinesses = async () => {
       try {
@@ -41,6 +47,54 @@ export default function MapScreen() {
     fetchBusinesses();
   }, []);
 
+  // Récupérer la position GPS de l'utilisateur
+  useEffect(() => {
+    const getLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          console.log("Permission de localisation refusée");
+          return;
+        }
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      } catch (err) {
+        console.log("Erreur géolocalisation:", err);
+      }
+    };
+    getLocation();
+  }, []);
+
+  // Une fois la carte prête ET la position GPS disponible, on fait le zoom animé
+  useEffect(() => {
+    if (mapReady && userLocation && webviewRef.current) {
+      const script = `
+        if (window.flyToUser) {
+          window.flyToUser(${userLocation.lat}, ${userLocation.lng});
+        }
+        true;
+      `;
+      webviewRef.current.injectJavaScript(script);
+    }
+  }, [mapReady, userLocation]);
+
+  const recenterOnUser = () => {
+    if (userLocation && webviewRef.current) {
+      const script = `
+        if (window.flyToUser) {
+          window.flyToUser(${userLocation.lat}, ${userLocation.lng});
+        }
+        true;
+      `;
+      webviewRef.current.injectJavaScript(script);
+    }
+  };
+
   const mapHtml = `
     <!DOCTYPE html>
     <html>
@@ -52,6 +106,29 @@ export default function MapScreen() {
       <style>
         * { margin: 0; padding: 0; }
         html, body, #map { height: 100%; width: 100%; }
+
+        .user-dot {
+          width: 18px;
+          height: 18px;
+          background: #4285F4;
+          border: 3px solid #fff;
+          border-radius: 50%;
+          box-shadow: 0 0 0 2px rgba(66,133,244,0.4);
+        }
+        .user-dot-pulse {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: rgba(66,133,244,0.35);
+          position: absolute;
+          top: 0;
+          left: 0;
+          animation: pulse 1.8s infinite;
+        }
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 0.7; }
+          100% { transform: scale(3); opacity: 0; }
+        }
       </style>
     </head>
     <body>
@@ -61,14 +138,32 @@ export default function MapScreen() {
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         const businesses = ${JSON.stringify(businesses)};
-        
+
         businesses.forEach(b => {
           if (b.location && b.location.coordinates) {
             const [lng, lat] = b.location.coordinates;
-            const marker = L.marker([lat, lng]).addTo(map)
+            L.marker([lat, lng]).addTo(map)
               .bindPopup(\`<b>\${b.name}</b><br>\${b.category}\`);
           }
         });
+
+        let userMarker = null;
+
+        window.flyToUser = function(lat, lng) {
+          if (userMarker) {
+            map.removeLayer(userMarker);
+          }
+          const icon = L.divIcon({
+            className: '',
+            html: '<div class="user-dot-pulse"></div><div class="user-dot"></div>',
+            iconSize: [18, 18],
+            iconAnchor: [9, 9],
+          });
+          userMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map);
+          map.flyTo([lat, lng], 16, { duration: 1.5 });
+        };
+
+        window.ReactNativeWebView.postMessage('mapReady');
       </script>
     </body>
     </html>
@@ -89,21 +184,34 @@ export default function MapScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>â†</Text>
+          <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.title}>Restaurants prÃ¨s de vous</Text>
+        <Text style={styles.title}>Restaurants près de vous</Text>
       </View>
 
       {/* Carte */}
-      <WebView
-        source={{ html: mapHtml }}
-        style={styles.map}
-        scalesPageToFit={true}
-      />
+      <View style={styles.mapWrap}>
+        <WebView
+          ref={webviewRef}
+          source={{ html: mapHtml }}
+          style={styles.map}
+          scalesPageToFit={true}
+          onMessage={(event) => {
+            if (event.nativeEvent.data === "mapReady") {
+              setMapReady(true);
+            }
+          }}
+        />
+
+        {/* Bouton pour recentrer sur l'utilisateur, façon Google Maps */}
+        <TouchableOpacity style={styles.locateBtn} onPress={recenterOnUser} activeOpacity={0.8}>
+          <Ionicons name="locate" size={20} color="#FF6B35" />
+        </TouchableOpacity>
+      </View>
 
       {/* Liste restaurants */}
       <View style={styles.listPanel}>
-        <Text style={styles.listTitle}>{businesses.length} restaurants trouvÃ©s</Text>
+        <Text style={styles.listTitle}>{businesses.length} restaurants trouvés</Text>
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
           {businesses.map(b => (
             <TouchableOpacity
@@ -121,7 +229,7 @@ export default function MapScreen() {
                 <Text style={styles.listItemName}>{b.name}</Text>
                 <Text style={styles.listItemCategory}>{b.category}</Text>
               </View>
-              <Text style={styles.listItemArrow}>â†’</Text>
+              <Ionicons name="chevron-forward" size={18} color="#FF6B35" />
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -137,9 +245,12 @@ const styles = StyleSheet.create({
   loadingText:    { marginTop: 12, color: "#666" },
   header:         { backgroundColor: "#FF6B35", padding: 15, paddingTop: 50, flexDirection: "row", alignItems: "center", gap: 12 },
   backBtn:        { padding: 4 },
-  backText:       { color: "#fff", fontSize: 22 },
   title:          { color: "#fff", fontSize: 18, fontWeight: "bold" },
+  mapWrap:        { position: "relative" },
   map:            { height: 300, width: "100%" },
+  locateBtn:      { position: "absolute", bottom: 14, right: 14, width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff",
+                    alignItems: "center", justifyContent: "center", elevation: 4,
+                    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
   listPanel:      { flex: 1, backgroundColor: "#f5f5f5", padding: 15 },
   listTitle:      { fontSize: 16, fontWeight: "bold", color: "#333", marginBottom: 10 },
   list:           { flex: 1 },
@@ -147,6 +258,4 @@ const styles = StyleSheet.create({
   listItem:       { backgroundColor: "#fff", padding: 15, borderRadius: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between", elevation: 2 },
   listItemName:   { fontSize: 15, fontWeight: "bold", color: "#333" },
   listItemCategory: { fontSize: 12, color: "#999", marginTop: 4 },
-  listItemArrow:  { fontSize: 18, color: "#FF6B35" },
 });
-
