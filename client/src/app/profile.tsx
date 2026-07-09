@@ -155,10 +155,15 @@ const pickAvatar = async () => {
       { text: "Non", style: "cancel" },
       {
         text: "Oui", style: "destructive",
-        onPress: async () => {
+            onPress: async () => {
+        try {
+          const { logout } = await import("../services/authService");
+          await logout();
+        } catch {
           await AsyncStorage.multiRemove(["kaviroq_token", "kaviroq_user", "userRole"]);
-          router.replace("/login");
         }
+        router.replace("/login");
+      }
       }
     ]);
   };
