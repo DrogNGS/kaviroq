@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { theme } from "../theme";
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated,
@@ -7,6 +7,7 @@ import {
 import { useRouter } from "expo-router";
 import Navigation from "../components/Navigation";
 import { useRestaurants, Business } from "../hooks/useRestaurants";
+import { useUserLocation } from "../hooks/useUserLocation";
 import { getSocket } from "../services/socket";
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -113,6 +114,96 @@ const BusinessCard = ({ business, onPress, isOpenOverride }: any) => {
   );
 };
 
+// Construction du HTML de la carte — mémoïsée séparément, ne dépend que des restaurants/statuts
+function buildMapHtml(points: Business[], openStatus: Record<string, boolean>) {
+  const mapPoints = points.map(p => ({
+    id: p._id, name: p.name, cat: p.category,
+    lat: p.location?.coordinates?.[1] ?? 5.345317,
+    lng: p.location?.coordinates?.[0] ?? -4.024429,
+    isOpen: openStatus[p._id] !== undefined ? openStatus[p._id] : p.isOpen,
+  }));
+  return `<!DOCTYPE html><html><head>
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+      body{margin:0;padding:0}
+      #map{height:100vh;width:100vw}
+      .pb{background:#FF6B35;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:bold}
+      .user-dot{width:18px;height:18px;background:#4285F4;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 2px rgba(66,133,244,0.4)}
+      .user-dot-pulse{width:18px;height:18px;border-radius:50%;background:rgba(66,133,244,0.35);position:absolute;top:0;left:0;animation:pulse 1.8s infinite}
+      @keyframes pulse{0%{transform:scale(1);opacity:0.7}100%{transform:scale(3);opacity:0}}
+    </style>
+  </head><body>
+    <div id="map"></div>
+    <script>
+      var map=L.map('map').setView([5.345317,-4.024429],13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+      var icons={'restaurant':'🍔','patisserie':'🎂','hotel':'🏨','maquis':'🏖','fast_food':'🍟','cafe':'☕'};
+      var pts=${JSON.stringify(mapPoints)};
+      pts.forEach(function(p,i){
+        var emoji=icons[p.cat]||'🏪';
+        var borderColor=p.isOpen?'#10B981':'#EF4444';
+        var icon=L.divIcon({
+          html:'<div style="font-size:28px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));border:3px solid '+borderColor+';border-radius:50%;background:white;padding:2px">'+emoji+'</div>',
+          iconSize:[40,40],iconAnchor:[20,40],popupAnchor:[0,-40],className:''
+        });
+        var statusLabel=p.isOpen?'<span style="color:#10B981;font-weight:bold">Ouvert</span>':'<span style="color:#EF4444;font-weight:bold">Fermé</span>';
+        L.marker([p.lat,p.lng],{icon:icon}).addTo(map)
+         .bindPopup('<b>'+p.name+'</b><br>'+p.cat+' · '+statusLabel+'<br><br><button class="pb" onclick="go('+i+')">Voir le menu</button>');
+      });
+      function go(i){
+        var p=pts[i];
+        var m={type:'openBusiness',id:p.id,name:p.name,category:p.cat};
+        if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(m));
+        else window.parent.postMessage(m,'*');
+      }
+
+      var userMarker=null;
+      var hasCenteredOnce=false;
+      var ZOOM_CLOSE=18;
+
+      function ensureUserMarker(lat,lng){
+        if(!userMarker){
+          var uicon=L.divIcon({className:'',html:'<div class="user-dot-pulse"></div><div class="user-dot"></div>',iconSize:[18,18],iconAnchor:[9,9]});
+          userMarker=L.marker([lat,lng],{icon:uicon,zIndexOffset:1000}).addTo(map);
+        } else {
+          userMarker.setLatLng([lat,lng]);
+        }
+      }
+
+      window.updateUserLocation=function(lat,lng){
+        ensureUserMarker(lat,lng);
+        if(!hasCenteredOnce){
+          map.flyTo([lat,lng],ZOOM_CLOSE,{duration:1.5});
+          hasCenteredOnce=true;
+        } else {
+          map.panTo([lat,lng],{animate:true,duration:0.5});
+        }
+      };
+
+      window.recenterUser=function(lat,lng){
+        ensureUserMarker(lat,lng);
+        map.flyTo([lat,lng],ZOOM_CLOSE,{duration:1});
+      };
+
+      var readyMsg={type:'ready'};
+      if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(readyMsg));
+      else window.parent.postMessage(readyMsg,'*');
+
+      // Sur le web, on écoute les positions envoyées depuis React
+      window.addEventListener('message', function(e){
+        if(e.data && e.data.type==='updateLocation'){
+          window.updateUserLocation(e.data.lat, e.data.lng);
+        }
+        if(e.data && e.data.type==='recenter'){
+          window.recenterUser(e.data.lat, e.data.lng);
+        }
+      });
+    </script>
+  </body></html>`;
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -122,8 +213,18 @@ export default function HomeScreen() {
   const [notification, setNotification] = useState<{ name: string; isOpen: boolean } | null>(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const notifAnim = useRef(new Animated.Value(-80)).current;
   const { restaurants, isLoading, error, refresh, setFilters } = useRestaurants();
+  const { location: userLocation } = useUserLocation();
+
+  const webviewRef = useRef<any>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  const mapHtml = useMemo(
+    () => buildMapHtml(restaurants, openStatus),
+    [restaurants, openStatus]
+  );
 
   useEffect(() => {
     const socket = getSocket();
@@ -138,6 +239,21 @@ export default function HomeScreen() {
     });
     return () => { socket.off("business_status_changed"); };
   }, []);
+
+  // Diffuse la position GPS à la carte (WebView natif ou iframe web) dès qu'elle change
+  useEffect(() => {
+    if (!mapReady || !userLocation) return;
+    if (Platform.OS === "web") {
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: "updateLocation", lat: userLocation.lat, lng: userLocation.lng },
+        "*"
+      );
+    } else {
+      webviewRef.current?.injectJavaScript(
+        `window.updateUserLocation(${userLocation.lat}, ${userLocation.lng}); true;`
+      );
+    }
+  }, [mapReady, userLocation]);
 
   const handleCategoryPress = (value: string) => {
     const next = selectedCategory === value ? null : value;
@@ -165,69 +281,54 @@ export default function HomeScreen() {
     router.push({ pathname: "/business/[id]", params: { id } });
   };
 
-  const buildMapHtml = (points: Business[]) => {
-    const mapPoints = points.map(p => ({
-      id: p._id, name: p.name, cat: p.category,
-      lat: p.location?.coordinates?.[1] ?? 5.345317,
-      lng: p.location?.coordinates?.[0] ?? -4.024429,
-      isOpen: openStatus[p._id] !== undefined ? openStatus[p._id] : p.isOpen,
-    }));
-    return `<!DOCTYPE html><html><head>
-      <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-      <style>body{margin:0;padding:0}#map{height:100vh;width:100vw}.pb{background:#FF6B35;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:bold}</style>
-    </head><body>
-      <div id="map"></div>
-      <script>
-        var map=L.map('map').setView([5.345317,-4.024429],13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        var icons={'restaurant':'🍔','patisserie':'🎂','hotel':'🏨','maquis':'🏖','fast_food':'🍟','cafe':'☕'};
-        var pts=${JSON.stringify(mapPoints)};
-        pts.forEach(function(p,i){
-          var emoji=icons[p.cat]||'🏪';
-          var borderColor=p.isOpen?'#10B981':'#EF4444';
-          var icon=L.divIcon({
-            html:'<div style="font-size:28px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));border:3px solid '+borderColor+';border-radius:50%;background:white;padding:2px">'+emoji+'</div>',
-            iconSize:[40,40],iconAnchor:[20,40],popupAnchor:[0,-40],className:''
-          });
-          var statusLabel=p.isOpen?'<span style="color:#10B981;font-weight:bold">Ouvert</span>':'<span style="color:#EF4444;font-weight:bold">Fermé</span>';
-          L.marker([p.lat,p.lng],{icon:icon}).addTo(map)
-           .bindPopup('<b>'+p.name+'</b><br>'+p.cat+' · '+statusLabel+'<br><br><button class="pb" onclick="go('+i+')">Voir le menu</button>');
-        });
-        function go(i){
-          var p=pts[i];
-          var m={type:'openBusiness',id:p.id,name:p.name,category:p.cat};
-          if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(m));
-          else window.parent.postMessage(m,'*');
-        }
-      </script>
-    </body></html>`;
+  const handleMapMessage = (data: any) => {
+    if (data?.type === "openBusiness") handleOpen(data.id, data.name, data.category);
+    if (data?.type === "ready") setMapReady(true);
   };
 
   const MapComponent = () => {
-    const html = buildMapHtml(restaurants);
     if (Platform.OS === "web") {
       return (
-        <iframe srcDoc={html} style={{ width: "100%", height: "100%", border: "none" } as any}
-          onLoad={() => { window.addEventListener("message", (event) => { if (event.data?.type === "openBusiness") handleOpen(event.data.id, event.data.name, event.data.category); }); }} />
+        <iframe
+          ref={iframeRef as any}
+          srcDoc={mapHtml}
+          style={{ width: "100%", height: "100%", border: "none" } as any}
+          onLoad={() => {
+            window.addEventListener("message", (event) => handleMapMessage(event.data));
+          }}
+        />
       );
     }
     const { WebView } = require("react-native-webview");
     return (
       <WebView
-        source={{ html }}
+        ref={webviewRef}
+        source={{ html: mapHtml }}
         style={{ flex: 1 }}
         scrollEnabled={false}
         scalesPageToFit={false}
         onMessage={(event: any) => {
           try {
             const data = JSON.parse(event.nativeEvent.data);
-            if (data.type === "openBusiness") handleOpen(data.id, data.name, data.category);
+            handleMapMessage(data);
           } catch {}
         }}
       />
     );
+  };
+
+  const recenterOnUser = () => {
+    if (!userLocation) return;
+    if (Platform.OS === "web") {
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: "recenter", lat: userLocation.lat, lng: userLocation.lng },
+        "*"
+      );
+    } else {
+      webviewRef.current?.injectJavaScript(
+        `window.recenterUser(${userLocation.lat}, ${userLocation.lng}); true;`
+      );
+    }
   };
 
   return (
@@ -261,9 +362,14 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* ✅ Carte fixe en haut (sticky) */}
+      {/* Carte fixe en haut (sticky), suit la position GPS en continu */}
       <Navigation cartCount={0} />
-      <View style={styles.mapContainer}><MapComponent /></View>
+      <View style={styles.mapContainer}>
+        <MapComponent />
+        <TouchableOpacity style={styles.locateBtn} onPress={recenterOnUser} activeOpacity={0.8}>
+          <Text style={styles.locateBtnIcon}>◎</Text>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} colors={["#FF6B35"]} />}
@@ -335,7 +441,7 @@ export default function HomeScreen() {
           ))
         )}
 
-        {/* ✅ Accès rapide glassmorphisme */}
+        {/* Accès rapide glassmorphisme */}
         <View style={styles.actionSection}>
           <Text style={styles.sectionTitle}>Accès rapide</Text>
           <View style={styles.actionGrid}>
@@ -363,7 +469,11 @@ const styles = StyleSheet.create({
   notifBanner:          { position: "absolute", top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: "rgba(37,37,64,0.95)", flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 20, paddingVertical: 12, paddingTop: 50, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" },
   notifDot:             { width: 10, height: 10, borderRadius: 5 },
   notifText:            { color: "#fff", fontSize: 13, flex: 1 },
-  mapContainer:         { height: 280, width: "100%", overflow: "hidden" },
+  mapContainer:         { height: 280, width: "100%", overflow: "hidden", position: "relative" },
+  locateBtn:            { position: "absolute", bottom: 12, right: 12, width: 38, height: 38, borderRadius: 19, backgroundColor: "#fff",
+                          alignItems: "center", justifyContent: "center", elevation: 4,
+                          shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
+  locateBtnIcon:        { fontSize: 16, color: "#FF6B35" },
   searchBar:            { backgroundColor: "rgba(255,255,255,0.07)", marginHorizontal: 15, marginTop: 14, marginBottom: 4, padding: 12, borderRadius: 16, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
   searchBarFocused:     { borderColor: "#FF6B35", backgroundColor: "rgba(255,107,53,0.06)" },
   searchIcon:           { fontSize: 16, marginRight: 8 },

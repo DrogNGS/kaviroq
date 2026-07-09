@@ -6,8 +6,8 @@ import {
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import WebView from "react-native-webview";
-import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
+import { useUserLocation } from "../hooks/useUserLocation";
 
 const API_URL = (process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api").replace("/api", "");
 
@@ -24,8 +24,8 @@ export default function MapScreen() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const { location: userLocation } = useUserLocation();
 
   // Charger les restaurants
   useEffect(() => {
@@ -47,51 +47,20 @@ export default function MapScreen() {
     fetchBusinesses();
   }, []);
 
-  // Récupérer la position GPS de l'utilisateur
-  useEffect(() => {
-    const getLocation = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-          console.log("Permission de localisation refusée");
-          return;
-        }
-        const position = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        setUserLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-      } catch (err) {
-        console.log("Erreur géolocalisation:", err);
-      }
-    };
-    getLocation();
-  }, []);
-
-  // Une fois la carte prête ET la position GPS disponible, on fait le zoom animé
+  // À chaque mise à jour de la position, on met à jour la carte en direct
   useEffect(() => {
     if (mapReady && userLocation && webviewRef.current) {
-      const script = `
-        if (window.flyToUser) {
-          window.flyToUser(${userLocation.lat}, ${userLocation.lng});
-        }
-        true;
-      `;
-      webviewRef.current.injectJavaScript(script);
+      webviewRef.current.injectJavaScript(
+        `window.updateUserLocation(${userLocation.lat}, ${userLocation.lng}); true;`
+      );
     }
   }, [mapReady, userLocation]);
 
   const recenterOnUser = () => {
     if (userLocation && webviewRef.current) {
-      const script = `
-        if (window.flyToUser) {
-          window.flyToUser(${userLocation.lat}, ${userLocation.lng});
-        }
-        true;
-      `;
-      webviewRef.current.injectJavaScript(script);
+      webviewRef.current.injectJavaScript(
+        `window.recenterUser(${userLocation.lat}, ${userLocation.lng}); true;`
+      );
     }
   };
 
@@ -148,19 +117,38 @@ export default function MapScreen() {
         });
 
         let userMarker = null;
+        let hasCenteredOnce = false;
+        const ZOOM_CLOSE = 18; // ~ vue rapprochée sur ~100m
 
-        window.flyToUser = function(lat, lng) {
-          if (userMarker) {
-            map.removeLayer(userMarker);
+        function ensureUserMarker(lat, lng) {
+          if (!userMarker) {
+            const icon = L.divIcon({
+              className: '',
+              html: '<div class="user-dot-pulse"></div><div class="user-dot"></div>',
+              iconSize: [18, 18],
+              iconAnchor: [9, 9],
+            });
+            userMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map);
+          } else {
+            userMarker.setLatLng([lat, lng]);
           }
-          const icon = L.divIcon({
-            className: '',
-            html: '<div class="user-dot-pulse"></div><div class="user-dot"></div>',
-            iconSize: [18, 18],
-            iconAnchor: [9, 9],
-          });
-          userMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map);
-          map.flyTo([lat, lng], 16, { duration: 1.5 });
+        }
+
+        // Appelé à chaque mise à jour GPS : suit la position en continu
+        window.updateUserLocation = function(lat, lng) {
+          ensureUserMarker(lat, lng);
+          if (!hasCenteredOnce) {
+            map.flyTo([lat, lng], ZOOM_CLOSE, { duration: 1.5 });
+            hasCenteredOnce = true;
+          } else {
+            map.panTo([lat, lng], { animate: true, duration: 0.5 });
+          }
+        };
+
+        // Appelé par le bouton de recentrage manuel
+        window.recenterUser = function(lat, lng) {
+          ensureUserMarker(lat, lng);
+          map.flyTo([lat, lng], ZOOM_CLOSE, { duration: 1 });
         };
 
         window.ReactNativeWebView.postMessage('mapReady');

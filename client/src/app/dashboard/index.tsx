@@ -22,6 +22,12 @@ type Order = {
   createdAt: string;
 };
 
+type BusinessInfo = {
+  _id: string;
+  name: string;
+  isOpen: boolean;
+};
+
 const STATUS_CONFIG = {
   pending:   { label: "En attente",  color: "#F59E0B", next: "confirmed" },
   confirmed: { label: "Confirmée",   color: "#3B82F6", next: "ready"     },
@@ -40,6 +46,8 @@ const FILTERS = ["Toutes", "pending", "confirmed", "ready", "delivered", "cancel
 
 export default function BusinessDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [business, setBusiness] = useState<BusinessInfo | null>(null);
+  const [togglingOpen, setTogglingOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<typeof FILTERS[number]>("Toutes");
@@ -61,18 +69,20 @@ export default function BusinessDashboard() {
   const fetchOrders = useCallback(async () => {
   try {
     const token = await AsyncStorage.getItem("kaviroq_token");
-    
+
     // Vérifier si l'entreprise existe
     const bizRes = await fetch(`${API_URL}/businesses/mine`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const bizData = await bizRes.json();
-    
+
     // Si pas d'entreprise → rediriger vers setup
     if (!Array.isArray(bizData) || bizData.length === 0) {
       router.replace("/dashboard/setup");
       return;
     }
+
+    setBusiness({ _id: bizData[0]._id, name: bizData[0].name, isOpen: !!bizData[0].isOpen });
 
     const res = await fetch(`${API_URL}/orders/business`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -103,6 +113,29 @@ export default function BusinessDashboard() {
       socket.off("order_status_updated");
     };
   }, []);
+
+  const toggleBusinessOpen = async () => {
+    if (!business) return;
+    const newValue = !business.isOpen;
+    setTogglingOpen(true);
+    // Optimistic update
+    setBusiness((prev) => (prev ? { ...prev, isOpen: newValue } : prev));
+    try {
+      const token = await AsyncStorage.getItem("kaviroq_token");
+      const res = await fetch(`${API_URL}/businesses/${business._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ isOpen: newValue }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      // Rollback si échec
+      setBusiness((prev) => (prev ? { ...prev, isOpen: !newValue } : prev));
+      Alert.alert("Erreur", "Impossible de mettre à jour le statut de l'entreprise.");
+    } finally {
+      setTogglingOpen(false);
+    }
+  };
 
   const updateStatus = async (orderId: string, newStatus: string) => {
     setUpdating(orderId);
@@ -209,6 +242,34 @@ export default function BusinessDashboard() {
           </View>
         </View>
         <Text style={styles.welcomeText}>Bonjour, {user?.name} 👋</Text>
+
+        {/* ✅ Toggle ouverture / fermeture de l'entreprise */}
+        {business && (
+          <TouchableOpacity
+            style={[
+              styles.openToggle,
+              business.isOpen ? styles.openToggleOn : styles.openToggleOff,
+            ]}
+            onPress={toggleBusinessOpen}
+            disabled={togglingOpen}
+            activeOpacity={0.85}
+          >
+            <View style={styles.openToggleLeft}>
+              <View style={[styles.openDot, { backgroundColor: business.isOpen ? "#10B981" : "#EF4444" }]} />
+              <Text style={styles.openToggleLabel}>
+                {business.isOpen ? "Boutique ouverte" : "Boutique fermée"}
+              </Text>
+            </View>
+            {togglingOpen ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <View style={[styles.switchTrack, business.isOpen && styles.switchTrackOn]}>
+                <View style={[styles.switchThumb, business.isOpen && styles.switchThumbOn]} />
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
         <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Text style={styles.statNum}>{orders.length}</Text>
@@ -276,7 +337,20 @@ const styles = StyleSheet.create({
   headerTop:       { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   headerBtns:      { flexDirection: "row", gap: 8 },
   title:           { fontSize: 24, fontWeight: "800", color: "#fff" },
-  welcomeText:     { color: "#aaa", fontSize: 13, marginBottom: 16 },
+  welcomeText:     { color: "#aaa", fontSize: 13, marginBottom: 14 },
+
+  // ✅ Toggle ouverture/fermeture
+  openToggle:      { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, marginBottom: 16, borderWidth: 1 },
+  openToggleOn:    { backgroundColor: "rgba(16,185,129,0.12)", borderColor: "rgba(16,185,129,0.35)" },
+  openToggleOff:   { backgroundColor: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.35)" },
+  openToggleLeft:  { flexDirection: "row", alignItems: "center", gap: 10 },
+  openDot:         { width: 10, height: 10, borderRadius: 5 },
+  openToggleLabel: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  switchTrack:     { width: 44, height: 26, borderRadius: 13, backgroundColor: "rgba(255,255,255,0.15)", padding: 3, justifyContent: "center" },
+  switchTrackOn:   { backgroundColor: "rgba(16,185,129,0.4)" },
+  switchThumb:     { width: 20, height: 20, borderRadius: 10, backgroundColor: "#fff", alignSelf: "flex-start" },
+  switchThumbOn:   { alignSelf: "flex-end" },
+
   menuBtn:         { backgroundColor: "#F59E0B", paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
   menuBtnText:     { color: "#fff", fontSize: 12, fontWeight: "700" },
   logoutBtn:       { backgroundColor: "rgba(239,68,68,0.2)", paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: "rgba(239,68,68,0.4)" },
