@@ -5,9 +5,15 @@
     "owner": "drogon10",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
     "scheme": "kaviroq",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F0F1E"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.drogon10.kaviroq",
