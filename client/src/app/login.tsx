@@ -1,6 +1,6 @@
 ﻿import React, { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TextInput, TouchableOpacity, Image,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -8,6 +8,7 @@ import { useAuth } from "../store/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../theme";
 import { loginWithGoogle } from "../services/authService";
+import { registerForPushNotificationsAsync, savePushTokenToBackend } from "../services/notifications";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -23,6 +24,13 @@ export default function LoginScreen() {
     setMessage("");
     try {
       await login({ email, password });
+
+      // Enregistrement du push token après connexion réussie
+      const pushToken = await registerForPushNotificationsAsync();
+      if (pushToken) {
+        await savePushTokenToBackend(pushToken);
+      }
+
       setTimeout(async () => {
         const userJson = await AsyncStorage.getItem("kaviroq_user");
         if (userJson) {
@@ -39,11 +47,19 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
+
   const handleGoogle = async () => {
     setLoading(true);
     setMessage("");
     try {
       await loginWithGoogle();
+
+      // Enregistrement du push token après connexion réussie
+      const pushToken = await registerForPushNotificationsAsync();
+      if (pushToken) {
+        await savePushTokenToBackend(pushToken);
+      }
+
       const userJson = await AsyncStorage.getItem("kaviroq_user");
       if (userJson) {
         const user = JSON.parse(userJson);
@@ -69,14 +85,11 @@ export default function LoginScreen() {
         <View style={styles.circle3} />
 
         {/* Logo */}
-        <View style={styles.logoBox}>
-          <View style={styles.logoIcon}>
-            <Text style={styles.logoEmoji}>🚀</Text>
-          </View>
-          <Text style={styles.logo}>KAVIROQ</Text>
-          <Text style={styles.tagline}>Bon retour parmi nous !</Text>
-        </View>
-
+        <Image
+          source={require("../../assets/images/kaviroq_logo.png")}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
         {/* Formulaire */}
         <View style={styles.form}>
           {message ? (
@@ -176,6 +189,7 @@ const styles = StyleSheet.create({
   logoEmoji:          { fontSize: 34 },
   logo:               { fontSize: 32, fontWeight: "900", color: "#fff", letterSpacing: 4 },
   tagline:            { fontSize: 14, color: "rgba(255,255,255,0.4)", marginTop: 6 },
+  logoImage: { width: 200, height: 120, marginBottom: 20 },
 
   // Formulaire glassmorphisme
   form:               { backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 24, padding: 22, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",

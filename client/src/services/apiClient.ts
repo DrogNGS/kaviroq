@@ -51,4 +51,3 @@ export const apiClient = {
 };
 
 export { BASE_URL };
-
