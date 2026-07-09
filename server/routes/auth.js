@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const authMiddleware = require("../middleware/auth");
+const admin = require("../firebase-admin");
 
 // Inscription
 router.post("/register", async (req, res) => {
@@ -43,7 +44,6 @@ router.post("/firebase-sync", async (req, res) => {
   try {
     const { uid, email, name, role, idToken } = req.body;
 
-    const admin = require("firebase-admin");
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     if (decodedToken.uid !== uid) {
       return res.status(401).json({ message: "Token invalide" });
@@ -111,6 +111,16 @@ router.put("/profile", authMiddleware, async (req, res) => {
       { new: true }
     ).select("-password");
     res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+// Enregistrer le token de notification push
+router.put("/push-token", authMiddleware, async (req, res) => {
+  try {
+    const { pushToken } = req.body;
+    await User.findByIdAndUpdate(req.user.id, { pushToken });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

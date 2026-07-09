@@ -6,6 +6,30 @@ const http = require("http");
 const { Server } = require("socket.io");
 const Message = require("./models/Message");
 require("./firebase-admin");
+const User = require("./models/User");
+
+async function sendPushNotification(pushToken, title, body, data = {}) {
+  if (!pushToken || !pushToken.startsWith("ExponentPushToken")) return;
+  try {
+    await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Accept-encoding": "gzip, deflate",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: pushToken,
+        sound: "default",
+        title,
+        body,
+        data,
+      }),
+    });
+  } catch (err) {
+    console.error("Erreur envoi push notification:", err);
+  }
+}
 
 dotenv.config();
 
@@ -33,25 +57,38 @@ io.on("connection", (socket) => {
   });
 
   socket.on("send_message", async (data) => {
-    try {
-      const message = await Message.create({
-        roomId:     data.roomId,
-        senderId:   data.sender,
-        senderName: data.senderName,
-        content:    data.text,
-      });
-      io.to(data.roomId).emit("receive_message", {
-        id:         message._id,
-        sender:     message.senderId,
-        senderName: message.senderName,
-        text:       message.content,
-        timestamp:  message.createdAt,
-      });
-    } catch (err) {
-      console.error("Erreur message:", err);
-    }
-  });
+  try {
+    const message = await Message.create({
+      roomId:     data.roomId,
+      senderId:   data.sender,
+      senderName: data.senderName,
+      content:    data.text,
+    });
+    io.to(data.roomId).emit("receive_message", {
+      id:         message._id,
+      sender:     message.senderId,
+      senderName: message.senderName,
+      text:       message.content,
+      timestamp:  message.createdAt,
+    });
 
+    // Trouver le destinataire (l'autre participant du roomId "idA_idB")
+    const [idA, idB] = data.roomId.split("_");
+    const recipientId = idA === data.sender ? idB : idA;
+
+    const recipient = await User.findById(recipientId).select("pushToken");
+    if (recipient?.pushToken) {
+      await sendPushNotification(
+        recipient.pushToken,
+        data.senderName || "Nouveau message",
+        data.text,
+        { roomId: data.roomId }
+      );
+    }
+  } catch (err) {
+    console.error("Erreur message:", err);
+  }
+});
   socket.on("join_order", ({ orderId }) => {
     socket.join("order:" + orderId);
   });

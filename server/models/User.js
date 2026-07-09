@@ -7,6 +7,7 @@ const UserSchema = new mongoose.Schema({
   role: { type: String, enum: ["client", "business", "admin"], default: "client" },
   firebaseUid: { type: String, sparse: true },
   avatar: { type: String },
+  pushToken: { type: String },
   location: {
     type: { type: String, default: "Point" },
     coordinates: [Number]
