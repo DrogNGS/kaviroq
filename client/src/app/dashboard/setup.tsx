@@ -10,14 +10,14 @@ import * as Location from "expo-location";
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api";
 
 const CATEGORIES = [
-  { value: "restaurant", label: "Restaurant", icon: "ðŸ”" },
-  { value: "hotel",      label: "HÃ´tel",       icon: "ðŸ¨" },
-  { value: "patisserie", label: "PÃ¢tisserie",  icon: "ðŸŽ‚" },
-  { value: "maquis",    label: "Maquis",      icon: "ðŸ–" },
-  { value: "salon",     label: "Salon",       icon: "ðŸ’‡" },
-  { value: "fast_food", label: "Fast Food",   icon: "ðŸŸ" },
-  { value: "cafe",      label: "CafÃ©",        icon: "â˜•" },
-  { value: "commerce",  label: "Commerce",    icon: "ðŸ›’" },
+  { value: "restaurant", label: "Restaurant", icon: "🍔" },
+  { value: "hotel",      label: "Hotel",       icon: "🏨" },
+  { value: "patisserie", label: "Patisserie",  icon: "🎂" },
+  { value: "maquis",    label: "Maquis",      icon: "🏖" },
+  { value: "salon",     label: "Salon",       icon: "💇" },
+  { value: "fast_food", label: "Fast Food",   icon: "🍟" },
+  { value: "cafe",      label: "Cafe",        icon: "☕" },
+  { value: "commerce",  label: "Commerce",    icon: "🛒" },
 ];
 
 export default function SetupBusinessScreen() {
@@ -25,7 +25,6 @@ export default function SetupBusinessScreen() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
-
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -33,11 +32,8 @@ export default function SetupBusinessScreen() {
   const [phone, setPhone] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-  // FIX 1 : DÃ©tecter la position automatiquement Ã  l'Ã©tape 2
   useEffect(() => {
-    if (step === 2 && !coords) {
-      getMyLocation();
-    }
+    if (step === 2 && !coords) { getMyLocation(); }
   }, [step]);
 
   const getMyLocation = async () => {
@@ -45,22 +41,21 @@ export default function SetupBusinessScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission refusÃ©e", "Activez la gÃ©olocalisation pour vous positionner sur la carte.");
+        Alert.alert("Permission refusee", "Activez la geolocalisation.");
         setLocating(false);
         return;
       }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-
       const geo = await Location.reverseGeocodeAsync({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
       if (geo.length > 0) {
         const g = geo[0];
         const addr = [g.street, g.district, g.city].filter(Boolean).join(", ");
         if (!address) setAddress(addr);
       }
-      Alert.alert("âœ… Position dÃ©tectÃ©e", "Votre position a Ã©tÃ© enregistrÃ©e !");
+      Alert.alert("Position detectee", "Votre position a ete enregistree !");
     } catch {
-      Alert.alert("Erreur", "Impossible de dÃ©tecter votre position.");
+      Alert.alert("Erreur", "Impossible de detecter votre position.");
     } finally {
       setLocating(false);
     }
@@ -76,220 +71,111 @@ export default function SetupBusinessScreen() {
       <div id="map"></div>
       <script>
         var lat=${coords?.lat || 5.345317}, lng=${coords?.lng || -4.024429};
-        var map=L.map('map').setView([lat,lng],15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        var map=L.map("map").setView([lat,lng],15);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
         var marker=L.marker([lat,lng],{draggable:true}).addTo(map);
-        marker.bindPopup('<b>Votre entreprise</b><br>Glissez pour ajuster').openPopup();
-        marker.on('dragend',function(e){
+        marker.on("dragend",function(e){
           var pos=e.target.getLatLng();
-          var msg={type:'position',lat:pos.lat,lng:pos.lng};
+          var msg={type:"position",lat:pos.lat,lng:pos.lng};
           if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(msg));
-          else window.parent.postMessage(msg,'*');
+          else window.parent.postMessage(msg,"*");
         });
-        map.on('click',function(e){
+        map.on("click",function(e){
           marker.setLatLng(e.latlng);
-          var msg={type:'position',lat:e.latlng.lat,lng:e.latlng.lng};
+          var msg={type:"position",lat:e.latlng.lat,lng:e.latlng.lng};
           if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(msg));
-          else window.parent.postMessage(msg,'*');
+          else window.parent.postMessage(msg,"*");
         });
       </script>
     </body></html>`;
 
     if (Platform.OS === "web") {
       return (
-        <iframe
-          srcDoc={mapHtml}
-          style={{ width: "100%", height: "100%", border: "none" } as any}
-          onLoad={() => {
-            window.addEventListener("message", (e) => {
-              if (e.data?.type === "position") {
-                setCoords({ lat: e.data.lat, lng: e.data.lng });
-              }
-            });
-          }}
-        />
+        <iframe srcDoc={mapHtml} style={{ width: "100%", height: "100%", border: "none" } as any}
+          onLoad={() => { window.addEventListener("message", (e) => {
+            if (e.data?.type === "position") setCoords({ lat: e.data.lat, lng: e.data.lng });
+          }); }} />
       );
     }
     const { WebView } = require("react-native-webview");
     return (
-      <WebView
-        source={{ html: mapHtml }}
-        style={{ flex: 1 }}
+      <WebView source={{ html: mapHtml }} style={{ flex: 1 }}
         onMessage={(e: any) => {
-          try {
-            const data = JSON.parse(e.nativeEvent.data);
+          try { const data = JSON.parse(e.nativeEvent.data);
             if (data.type === "position") setCoords({ lat: data.lat, lng: data.lng });
           } catch {}
-        }}
-      />
+        }} />
     );
   };
+  
 
   const handleSubmit = async () => {
     if (!name.trim()) { Alert.alert("Erreur", "Le nom est requis."); return; }
-    if (!category) { Alert.alert("Erreur", "Choisissez une catÃ©gorie."); return; }
-
-    // FIX 2 : Fallback coords si pas de position sÃ©lectionnÃ©e
+    if (!category) { Alert.alert("Erreur", "Choisissez une categorie."); return; }
     const finalCoords = coords || { lat: 5.345317, lng: -4.024429 };
-
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem("kaviroq_token");
-
-      // FIX 3 : VÃ©rifier que le token existe
-      if (!token) {
-        Alert.alert("Session expirÃ©e", "Veuillez vous reconnecter.");
-        router.replace("/login");
-        return;
-      }
-
+      if (!token) { Alert.alert("Session expiree", "Veuillez vous reconnecter."); router.replace("/login"); return; }
       const res = await fetch(`${API_URL}/businesses`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          name,
-          category,
-          description,
-          address,
-          phone,
-          location: {
-            type: "Point",
-            coordinates: [finalCoords.lng, finalCoords.lat],
-          },
-        }),
+        body: JSON.stringify({ name, category, description, address, phone,
+          location: { type: "Point", coordinates: [finalCoords.lng, finalCoords.lat] } }),
       });
-
-      // FIX 4 : Afficher le message d'erreur du serveur si disponible
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        const errorMsg = errorData?.message || "Impossible de crÃ©er l'entreprise.";
-        Alert.alert("Erreur", errorMsg);
-        return;
+        Alert.alert("Erreur", errorData?.message || "Impossible de creer l'entreprise."); return;
       }
-
       router.replace("/dashboard");
     } catch (err) {
-      // FIX 5 : Afficher l'erreur rÃ©elle dans la console pour debug
-      console.error("Erreur handleSubmit:", err);
-      Alert.alert("Erreur", "Impossible de crÃ©er l'entreprise. VÃ©rifiez votre connexion.");
-    } finally {
-      setLoading(false);
-    }
+      Alert.alert("Erreur", "Verifiez votre connexion.");
+    } finally { setLoading(false); }
   };
 
-  // Ã‰tape 1 â€” Infos de base
   if (step === 1) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>CrÃ©er mon entreprise</Text>
-          <Text style={styles.subtitle}>Ã‰tape 1/2 â€” Informations</Text>
+          <Text style={styles.title}>Creer mon entreprise</Text>
+          <Text style={styles.subtitle}>Etape 1/2 - Informations</Text>
         </View>
-
         <Text style={styles.label}>Nom de l'entreprise *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ex: Restaurant Chez Kouassi"
-          placeholderTextColor="#aaa"
-          value={name}
-          onChangeText={setName}
-        />
-
-        <Text style={styles.label}>CatÃ©gorie *</Text>
+        <TextInput style={styles.input} placeholder="Ex: Restaurant Chez Kouassi" placeholderTextColor="#aaa" value={name} onChangeText={setName} />
+        <Text style={styles.label}>Categorie *</Text>
         <View style={styles.categoriesGrid}>
           {CATEGORIES.map((cat) => (
-            <TouchableOpacity
-              key={cat.value}
-              style={[styles.catCard, category === cat.value && styles.catCardActive]}
-              onPress={() => setCategory(cat.value)}
-            >
+            <TouchableOpacity key={cat.value} style={[styles.catCard, category === cat.value && styles.catCardActive]} onPress={() => setCategory(cat.value)}>
               <Text style={styles.catIcon}>{cat.icon}</Text>
               <Text style={[styles.catLabel, category === cat.value && styles.catLabelActive]}>{cat.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
-
         <Text style={styles.label}>Description</Text>
-        <TextInput
-          style={[styles.input, styles.inputMulti]}
-          placeholder="DÃ©crivez votre entreprise..."
-          placeholderTextColor="#aaa"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-        />
-
+        <TextInput style={[styles.input, styles.inputMulti]} placeholder="Decrivez votre entreprise..." placeholderTextColor="#aaa" value={description} onChangeText={setDescription} multiline />
         <Text style={styles.label}>Adresse</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ex: Cocody, Abidjan"
-          placeholderTextColor="#aaa"
-          value={address}
-          onChangeText={setAddress}
-        />
-
-        <Text style={styles.label}>TÃ©lÃ©phone</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ex: +225 07 00 00 00"
-          placeholderTextColor="#aaa"
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-        />
-
-        <TouchableOpacity
-          style={[styles.btn, !name || !category ? styles.btnDisabled : {}]}
-          onPress={() => setStep(2)}
-          disabled={!name || !category}
-        >
-          <Text style={styles.btnText}>Suivant â†’ Positionner sur la carte</Text>
+        <TextInput style={styles.input} placeholder="Ex: Cocody, Abidjan" placeholderTextColor="#aaa" value={address} onChangeText={setAddress} />
+        <Text style={styles.label}>Telephone</Text>
+        <TextInput style={styles.input} placeholder="Ex: +225 07 00 00 00" placeholderTextColor="#aaa" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        <TouchableOpacity style={[styles.btn, !name || !category ? styles.btnDisabled : {}]} onPress={() => setStep(2)} disabled={!name || !category}>
+          <Text style={styles.btnText}>Suivant - Positionner sur la carte</Text>
         </TouchableOpacity>
       </ScrollView>
     );
   }
 
-  // Ã‰tape 2 â€” Position sur la carte
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => setStep(1)}>
-          <Text style={styles.backBtn}>â† Retour</Text>
+          <Text style={styles.backBtn}>Retour</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Ma position</Text>
-        <Text style={styles.subtitle}>Ã‰tape 2/2 â€” Positionnez-vous sur la carte</Text>
+        {coords && <Text style={styles.coordsText}>Position: {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}</Text>}
       </View>
-
-      <View style={styles.mapActions}>
-        <TouchableOpacity style={styles.locateBtn} onPress={getMyLocation} disabled={locating}>
-          {locating
-            ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.locateBtnText}>ðŸ“ DÃ©tecter ma position</Text>
-          }
-        </TouchableOpacity>
-        {coords && (
-          <Text style={styles.coordsText}>
-            âœ… {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
-          </Text>
-        )}
-      </View>
-
-      <View style={styles.mapContainer}>
-        <MapPicker />
-      </View>
-
-      <Text style={styles.mapHint}>Appuyez sur la carte ou glissez le marqueur pour ajuster votre position</Text>
-
-      {/* FIX 1 : Bouton toujours actif (coords pas requis grÃ¢ce au fallback) */}
-      <TouchableOpacity
-        style={[styles.btn, styles.btnCreate, loading ? styles.btnDisabled : {}]}
-        onPress={handleSubmit}
-        disabled={loading}
-      >
-        {loading
-          ? <ActivityIndicator color="#fff" />
-          : <Text style={styles.btnText}>ðŸš€ CrÃ©er mon entreprise</Text>
-        }
+      <View style={styles.mapContainer}><MapPicker /></View>
+      <Text style={styles.mapHint}>Appuyez sur la carte ou glissez le marqueur</Text>
+      <TouchableOpacity style={[styles.btn, styles.btnCreate, loading ? styles.btnDisabled : {}]} onPress={handleSubmit} disabled={loading}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Creer mon entreprise</Text>}
       </TouchableOpacity>
     </View>
   );
@@ -315,14 +201,7 @@ const styles = StyleSheet.create({
   btnCreate:      { marginTop: 0 },
   btnDisabled:    { opacity: 0.4 },
   btnText:        { color: "#fff", fontWeight: "700", fontSize: 16 },
-  mapActions:     { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingVertical: 10 },
-  locateBtn:      { backgroundColor: "#FF6B35", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, flexDirection: "row", alignItems: "center" },
-  locateBtnText:  { color: "#fff", fontWeight: "700", fontSize: 13 },
   coordsText:     { fontSize: 12, color: "#10B981", flex: 1 },
   mapContainer:   { flex: 1, marginHorizontal: 20, borderRadius: 16, overflow: "hidden" },
   mapHint:        { fontSize: 12, color: "#aaa", textAlign: "center", marginVertical: 8, paddingHorizontal: 20 },
 });
-
-
-
-
