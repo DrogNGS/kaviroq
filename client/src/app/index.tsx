@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from "react-native";
+import { View, Image, Text, StyleSheet, TouchableOpacity, Animated, Platform } from "react-native";
 import { useRouter } from "expo-router";
 
 const particleHtml = `
@@ -144,10 +144,12 @@ export default function SplashScreen() {
           transform: [{ scale: logoScale }],
           opacity: logoOpacity
         }]}>
-          <View style={styles.logoIconBox}>
-            <Text style={styles.logoIcon}>🚀</Text>
-          </View>
-          <Text style={styles.logo}>KAVIROQ</Text>
+          <Image 
+          source={require("../../assets/images/icon.png")} 
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
+                  <Text style={styles.logo}>KAVIROQ</Text>
           <Text style={styles.subtitle}>Livraison & Services en Côte d'Ivoire</Text>
           <View style={styles.dots}>
             <View style={[styles.dot, { backgroundColor: "#FF6B35" }]} />
@@ -194,8 +196,7 @@ const styles = StyleSheet.create({
   container:       { flex: 1, backgroundColor: "#0f0c29" },
   content:         { flex: 1, alignItems: "center", justifyContent: "space-between", padding: 30, paddingTop: 80, paddingBottom: 50, zIndex: 10 },
   logoBox:         { alignItems: "center" },
-  logoIconBox:     { width: 80, height: 80, borderRadius: 24, backgroundColor: "rgba(255,107,53,0.2)", borderWidth: 1.5, borderColor: "rgba(255,107,53,0.5)", alignItems: "center", justifyContent: "center", marginBottom: 20 },
-  logoIcon:        { fontSize: 36 },
+  logoImage: { width: 120, height: 120, borderRadius: 28, marginBottom: 20 },
   logo:            { fontSize: 48, fontWeight: "900", color: "#fff", letterSpacing: 6, textShadowColor: "rgba(255,107,53,0.8)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 20 },
   subtitle:        { fontSize: 14, color: "rgba(255,255,255,0.6)", textAlign: "center", marginTop: 10, letterSpacing: 1 },
   dots:            { flexDirection: "row", gap: 6, marginTop: 20 },

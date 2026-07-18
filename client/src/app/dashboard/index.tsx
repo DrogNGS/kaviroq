@@ -1,7 +1,7 @@
 import { useAuth } from "../../store/AuthContext";
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet,
+  View, Image, Text, FlatList, TouchableOpacity, StyleSheet,
   ActivityIndicator, RefreshControl, Alert, ScrollView, Animated,
 } from "react-native";
 import { useRouter } from "expo-router";

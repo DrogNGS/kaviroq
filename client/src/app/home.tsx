@@ -177,9 +177,8 @@ function buildMapHtml(points: Business[], openStatus: Record<string, boolean>) {
         if(!hasCenteredOnce){
           map.flyTo([lat,lng],ZOOM_CLOSE,{duration:1.5});
           hasCenteredOnce=true;
-        } else {
-          map.panTo([lat,lng],{animate:true,duration:0.5});
         }
+        // Ne plus panTo automatiquement - juste mettre le marqueur
       };
 
       window.recenterUser=function(lat,lng){

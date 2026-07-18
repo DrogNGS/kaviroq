@@ -34,8 +34,8 @@ export function useUserLocation() {
         subscriptionRef.current = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
-            timeInterval: 3000,
-            distanceInterval: 5,
+            timeInterval: 10000,
+            distanceInterval: 20,
           },
           (position) => {
             if (isMounted) {
