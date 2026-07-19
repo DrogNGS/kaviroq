@@ -32,7 +32,10 @@
       "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "notification": {
+        "vapidPublicKey": "BDgK2qIAAMt9YQZ3CDowviOwbEB9gtEoOC57Vuw4ahTlh50XrEhQTwkMBBjMC6EC1OZj7ToIGZE86wb7L3jqY24"
+      }
     },
     "plugins": [
       "expo-router",
